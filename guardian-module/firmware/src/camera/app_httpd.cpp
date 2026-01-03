@@ -1,0 +1,248 @@
+#include "esp_http_server.h"
+#include "esp_timer.h"
+#include "esp_camera.h"
+#include "img_converters.h"
+#include "camera_index.h"
+#include "esp_log.h"
+#include <stdlib.h>
+#include <string.h>
+#include "moteur/MotorPan.h"
+#include "moteur/MotorTilt.h"
+
+// import des moteurs
+extern MotorPan motorPan;
+extern MotorTilt motorTilt;
+// import des var de temps
+extern unsigned long startTimePan;
+extern unsigned long startTimeTilt;
+
+static const char *TAG = "camera_httpd";
+
+/* ============================
+   STREAM DEFINITIONS
+   ============================ */
+
+#define PART_BOUNDARY "123456789000000000000987654321"
+
+static const char *_STREAM_CONTENT_TYPE =
+    "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
+static const char *_STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
+static const char *_STREAM_PART =
+    "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
+
+httpd_handle_t camera_httpd = NULL;
+httpd_handle_t stream_httpd = NULL;
+
+/* ============================
+   UTILS
+   ============================ */
+
+static esp_err_t parse_get(httpd_req_t *req, char **obuf)
+{
+    size_t len = httpd_req_get_url_query_len(req) + 1;
+    if (len <= 1)
+        return ESP_FAIL;
+
+    char *buf = (char *)malloc(len);
+    if (!buf)
+        return ESP_FAIL;
+
+    if (httpd_req_get_url_query_str(req, buf, len) == ESP_OK)
+    {
+        *obuf = buf;
+        return ESP_OK;
+    }
+
+    free(buf);
+    return ESP_FAIL;
+}
+
+/* ============================
+   HANDLERS
+   ============================ */
+
+static esp_err_t index_handler(httpd_req_t *req)
+{
+    httpd_resp_set_type(req, "text/html");
+    httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
+
+    sensor_t *s = esp_camera_sensor_get();
+    if (!s)
+        return httpd_resp_send_500(req);
+
+    if (s->id.PID == OV3660_PID)
+        return httpd_resp_send(req,
+                               (const char *)index_ov3660_html_gz,
+                               index_ov3660_html_gz_len);
+    else if (s->id.PID == OV5640_PID)
+        return httpd_resp_send(req,
+                               (const char *)index_ov5640_html_gz,
+                               index_ov5640_html_gz_len);
+    else
+        return httpd_resp_send(req,
+                               (const char *)index_ov2640_html_gz,
+                               index_ov2640_html_gz_len);
+}
+
+static esp_err_t capture_handler(httpd_req_t *req)
+{
+    camera_fb_t *fb = esp_camera_fb_get();
+    if (!fb)
+        return httpd_resp_send_500(req);
+
+    httpd_resp_set_type(req, "image/jpeg");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+
+    esp_err_t res = httpd_resp_send(req,
+                                    (const char *)fb->buf,
+                                    fb->len);
+
+    esp_camera_fb_return(fb);
+    return res;
+}
+
+static esp_err_t stream_handler(httpd_req_t *req)
+{
+    httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+
+    while (true)
+    {
+        camera_fb_t *fb = esp_camera_fb_get();
+        if (!fb)
+            break;
+
+        httpd_resp_send_chunk(req,
+                              _STREAM_BOUNDARY,
+                              strlen(_STREAM_BOUNDARY));
+
+        char header[64];
+        size_t hlen = snprintf(header,
+                               sizeof(header),
+                               _STREAM_PART,
+                               fb->len);
+
+        httpd_resp_send_chunk(req, header, hlen);
+        httpd_resp_send_chunk(req,
+                              (const char *)fb->buf,
+                              fb->len);
+
+        esp_camera_fb_return(fb);
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t cmd_handler(httpd_req_t *req)
+{
+    char *buf = NULL;
+    char var[32];
+    char val_str[32];
+
+    if (parse_get(req, &buf) != ESP_OK)
+        return httpd_resp_send_404(req);
+
+    if (httpd_query_key_value(buf, "var", var, sizeof(var)) != ESP_OK ||
+        httpd_query_key_value(buf, "val", val_str, sizeof(val_str)) != ESP_OK)
+    {
+        free(buf);
+        return httpd_resp_send_404(req);
+    }
+
+    free(buf);
+
+    int val = atoi(val_str);
+    sensor_t *s = esp_camera_sensor_get();
+    if (!s)
+        return httpd_resp_send_500(req);
+
+    if (!strcmp(var, "brightness"))
+        s->set_brightness(s, val);
+    else if (!strcmp(var, "contrast"))
+        s->set_contrast(s, val);
+    else if (!strcmp(var, "saturation"))
+        s->set_saturation(s, val);
+    else if (!strcmp(var, "quality"))
+        s->set_quality(s, val);
+    // Axe Horizontale
+    else if (!strcmp(var, "pan"))
+    {
+        if (val == -1)
+        {
+            motorPan.left();
+            startTimePan = millis();
+        }
+        else if (val == 1)
+        {
+            motorPan.right();
+            startTimePan = millis();
+        }
+        else
+        {
+            motorPan.stop();
+        }
+    }
+    // Axe Verticale
+    else if (!strcmp(var, "tilt"))
+    {
+        if (val == -1)
+        {
+            motorTilt.down();
+            startTimeTilt = millis();
+        }
+        else if (val == 1)
+        {
+            motorTilt.up();
+            startTimeTilt = millis();
+        }
+        else
+        {
+            motorTilt.stop();
+        }
+    }
+    else
+        ESP_LOGI(TAG, "Unknown command: %s", var);
+
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    return httpd_resp_send(req, NULL, 0);
+}
+
+/* ============================
+   SERVER START
+   ============================ */
+
+void startCameraServer()
+{
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+
+    httpd_uri_t index_uri = {
+        .uri = "/",
+        .method = HTTP_GET,
+        .handler = index_handler};
+
+    httpd_uri_t capture_uri = {
+        .uri = "/capture",
+        .method = HTTP_GET,
+        .handler = capture_handler};
+
+    httpd_uri_t control_uri = {
+        .uri = "/control",
+        .method = HTTP_GET,
+        .handler = cmd_handler};
+
+    httpd_uri_t stream_uri = {
+        .uri = "/stream",
+        .method = HTTP_GET,
+        .handler = stream_handler};
+
+    ESP_LOGI(TAG, "Starting camera server");
+
+    httpd_start(&camera_httpd, &config);
+    httpd_register_uri_handler(camera_httpd, &index_uri);
+    httpd_register_uri_handler(camera_httpd, &capture_uri);
+    httpd_register_uri_handler(camera_httpd, &control_uri);
+
+    config.server_port++;
+    httpd_start(&stream_httpd, &config);
+    httpd_register_uri_handler(stream_httpd, &stream_uri);
+}

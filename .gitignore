@@ -1,0 +1,18 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+
+# PlatformIO / embedded
+.pio/
+.build/
+
+# Logs
+*.log
+
+# Secrets
+.env
+.env.*
