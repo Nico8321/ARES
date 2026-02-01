@@ -1,38 +1,58 @@
 #include "MotorPan.h"
 
-MotorPan::MotorPan(int gpio1, int gpio2)
+MotorPan::MotorPan(int stepPin, int dirPin, int enPin)
 {
-    pin1 = gpio1;
-    pin2 = gpio2;
+    pinStep = stepPin;
+    pinDir = dirPin;
+    pinEn = enPin;
 
-    pinMode(pin1, OUTPUT);
-    pinMode(pin2, OUTPUT);
+    pinMode(pinStep, OUTPUT);
+    pinMode(pinDir, OUTPUT);
+    pinMode(pinEn, OUTPUT);
 
-    digitalWrite(pin1, LOW);
-    digitalWrite(pin2, LOW);
+    digitalWrite(pinStep, LOW);
+    digitalWrite(pinDir, LOW);
+    digitalWrite(pinEn, HIGH); // disabled by default
 
     state = STOP;
 }
 
+void MotorPan::enable()
+{
+    digitalWrite(pinEn, LOW);
+}
+
+void MotorPan::disable()
+{
+    digitalWrite(pinEn, HIGH);
+}
+
 void MotorPan::left()
 {
-    digitalWrite(pin1, HIGH);
-    digitalWrite(pin2, LOW);
+    enable();
+    digitalWrite(pinDir, HIGH);
     state = LEFT;
 }
 
 void MotorPan::right()
 {
-    digitalWrite(pin1, LOW);
-    digitalWrite(pin2, HIGH);
+    enable();
+    digitalWrite(pinDir, LOW);
     state = RIGHT;
 }
 
 void MotorPan::stop()
 {
-    digitalWrite(pin1, LOW);
-    digitalWrite(pin2, LOW);
+    disable();
     state = STOP;
+}
+
+void MotorPan::stepOnce()
+{
+    digitalWrite(pinStep, HIGH);
+    delayMicroseconds(5);
+    digitalWrite(pinStep, LOW);
+    delayMicroseconds(5);
 }
 
 MotorPan::MotorState MotorPan::getState()

@@ -1,38 +1,58 @@
 #include "MotorTilt.h"
 
-MotorTilt::MotorTilt(int gpio1, int gpio2)
+MotorTilt::MotorTilt(int stepPin, int dirPin, int enPin)
 {
-    pin1 = gpio1;
-    pin2 = gpio2;
+    pinStep = stepPin;
+    pinDir = dirPin;
+    pinEn = enPin;
 
-    pinMode(pin1, OUTPUT);
-    pinMode(pin2, OUTPUT);
+    pinMode(pinStep, OUTPUT);
+    pinMode(pinDir, OUTPUT);
+    pinMode(pinEn, OUTPUT);
 
-    digitalWrite(pin1, LOW);
-    digitalWrite(pin2, LOW);
+    digitalWrite(pinStep, LOW);
+    digitalWrite(pinDir, LOW);
+    digitalWrite(pinEn, HIGH); // EN is active LOW -> disabled by default
 
     state = STOP;
 }
 
+void MotorTilt::enable()
+{
+    digitalWrite(pinEn, LOW); // enable driver
+}
+
+void MotorTilt::disable()
+{
+    digitalWrite(pinEn, HIGH); // disable driver
+}
+
 void MotorTilt::up()
 {
-    digitalWrite(pin1, HIGH);
-    digitalWrite(pin2, LOW);
+    enable();
+    digitalWrite(pinDir, HIGH);
     state = UP;
 }
 
 void MotorTilt::down()
 {
-    digitalWrite(pin1, LOW);
-    digitalWrite(pin2, HIGH);
+    enable();
+    digitalWrite(pinDir, LOW);
     state = DOWN;
 }
 
 void MotorTilt::stop()
 {
-    digitalWrite(pin1, LOW);
-    digitalWrite(pin2, LOW);
+    disable();
     state = STOP;
+}
+
+void MotorTilt::stepOnce()
+{
+    digitalWrite(pinStep, HIGH);
+    delayMicroseconds(5);
+    digitalWrite(pinStep, LOW);
+    delayMicroseconds(5);
 }
 
 MotorTilt::MotorState MotorTilt::getState()

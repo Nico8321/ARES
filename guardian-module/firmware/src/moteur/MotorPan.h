@@ -14,16 +14,22 @@ public:
     };
 
 private:
-    int pin1;
-    int pin2;
+    int pinStep;
+    int pinDir;
+    int pinEn;
     MotorState state;
 
 public:
-    MotorPan(int gpio1, int gpio2);
+    MotorPan(int stepPin, int dirPin, int enPin);
 
-    void left();
-    void right();
-    void stop();
+    void enable();
+    void disable();
+
+    void left();  // sets DIR for LEFT
+    void right(); // sets DIR for RIGHT
+    void stop();  // disables motor
+
+    void stepOnce(); // single STEP pulse (slow tests)
 
     MotorState getState();
 };

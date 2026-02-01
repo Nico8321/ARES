@@ -14,16 +14,22 @@ public:
     };
 
 private:
-    int pin1;
-    int pin2;
+    int pinStep;
+    int pinDir;
+    int pinEn;
     MotorState state;
 
 public:
-    MotorTilt(int gpio1, int gpio2);
+    MotorTilt(int stepPin, int dirPin, int enPin);
 
-    void up();
-    void down();
-    void stop();
+    void enable();
+    void disable();
+
+    void up();   // sets DIR for UP
+    void down(); // sets DIR for DOWN
+    void stop(); // disables motor
+
+    void stepOnce(); // single STEP pulse (slow tests)
 
     MotorState getState();
 };

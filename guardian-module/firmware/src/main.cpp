@@ -20,13 +20,14 @@ unsigned long startTimePan = 0;
 unsigned long startTimeTilt = 0;
 
 // Axe vertical (haut / bas)
-MotorTilt motorTilt(25, 26);
+MotorTilt motorTilt(2, 12, 13);
 
 // Axe horizontal (gauche / droite)
-MotorPan motorPan(27, 14);
+MotorPan motorPan(27, 14, 15);
 
 // Durée de marche moteur
-const unsigned long MOTOR_TIME = 50; // en ms
+const unsigned long MOTOR_TIME = 200;    // en ms
+const unsigned long STEP_DELAY_US = 800; // vitesse lente et visible
 
 void startCameraServer();
 void camera_init();
@@ -66,10 +67,23 @@ void setup()
 
 void loop()
 {
-  // Variable pour l'etat du moteur horizontal
   MotorPan::MotorState panState = motorPan.getState();
-  // Variable pour l'etat du moteur vertical
   MotorTilt::MotorState tiltState = motorTilt.getState();
+
+  // Génération des pas tant que le moteur est actif
+  if (panState != MotorPan::STOP)
+  {
+    //  motorPan.stepOnce();
+  }
+
+  if (tiltState != MotorTilt::STOP)
+  {
+    motorTilt.stepOnce();
+  }
+
+  delayMicroseconds(STEP_DELAY_US);
+
+  // Arrêt automatique après MOTOR_TIME
   if (panState != MotorPan::STOP)
   {
     if (millis() - startTimePan >= MOTOR_TIME)
@@ -77,6 +91,7 @@ void loop()
       motorPan.stop();
     }
   }
+
   if (tiltState != MotorTilt::STOP)
   {
     if (millis() - startTimeTilt >= MOTOR_TIME)
@@ -112,6 +127,6 @@ void camera_init()
   // config.pixel_format = PIXFORMAT_RGB565; // for face detection/recognition
   config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
   config.fb_location = CAMERA_FB_IN_PSRAM;
-  config.jpeg_quality = 10;
-  config.fb_count = 2;
+  config.jpeg_quality = 20;
+  config.fb_count = 1;
 }

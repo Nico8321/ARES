@@ -6,6 +6,7 @@
 #include "esp_log.h"
 #include <stdlib.h>
 #include <string.h>
+#include <Arduino.h>
 #include "moteur/MotorPan.h"
 #include "moteur/MotorTilt.h"
 
@@ -17,7 +18,7 @@ extern unsigned long startTimePan;
 extern unsigned long startTimeTilt;
 
 static const char *TAG = "camera_httpd";
-
+static volatile bool stream_running = false;
 /* ============================
    STREAM DEFINITIONS
    ============================ */
@@ -65,23 +66,9 @@ static esp_err_t index_handler(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "text/html");
     httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-
-    sensor_t *s = esp_camera_sensor_get();
-    if (!s)
-        return httpd_resp_send_500(req);
-
-    if (s->id.PID == OV3660_PID)
-        return httpd_resp_send(req,
-                               (const char *)index_ov3660_html_gz,
-                               index_ov3660_html_gz_len);
-    else if (s->id.PID == OV5640_PID)
-        return httpd_resp_send(req,
-                               (const char *)index_ov5640_html_gz,
-                               index_ov5640_html_gz_len);
-    else
-        return httpd_resp_send(req,
-                               (const char *)index_ov2640_html_gz,
-                               index_ov2640_html_gz_len);
+    return httpd_resp_send(req,
+                           (const char *)index_ov3660_html_gz,
+                           index_ov3660_html_gz_len);
 }
 
 static esp_err_t capture_handler(httpd_req_t *req)
@@ -103,36 +90,67 @@ static esp_err_t capture_handler(httpd_req_t *req)
 
 static esp_err_t stream_handler(httpd_req_t *req)
 {
+    if (stream_running)
+    {
+        ESP_LOGW(TAG, "Stream already running");
+        httpd_resp_set_status(req, "409 Conflict");
+        return httpd_resp_send(req, NULL, 0);
+    }
+
+    stream_running = true;
+
     httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
 
-    while (true)
+    while (stream_running)
     {
         camera_fb_t *fb = esp_camera_fb_get();
         if (!fb)
             break;
 
-        httpd_resp_send_chunk(req,
-                              _STREAM_BOUNDARY,
-                              strlen(_STREAM_BOUNDARY));
+        // Boundary
+        if (httpd_resp_send_chunk(req,
+                                  _STREAM_BOUNDARY,
+                                  strlen(_STREAM_BOUNDARY)) != ESP_OK)
+        {
+            esp_camera_fb_return(fb);
+            break;
+        }
 
+        // Header
         char header[64];
         size_t hlen = snprintf(header,
                                sizeof(header),
                                _STREAM_PART,
                                fb->len);
 
-        httpd_resp_send_chunk(req, header, hlen);
-        httpd_resp_send_chunk(req,
-                              (const char *)fb->buf,
-                              fb->len);
+        // Payload
+        if (httpd_resp_send_chunk(req, header, hlen) != ESP_OK ||
+            httpd_resp_send_chunk(req, (const char *)fb->buf, fb->len) != ESP_OK)
+        {
+            esp_camera_fb_return(fb);
+            break;
+        }
 
         esp_camera_fb_return(fb);
+
+        // Yield a little so other HTTP handlers (e.g. /control) can run.
+        delay(1);
     }
 
+    stream_running = false; // ← LIBÉRATION GARANTIE
+    httpd_resp_send_chunk(req, NULL, 0);
+    ESP_LOGI(TAG, "Stream stopped");
     return ESP_OK;
 }
+static esp_err_t stopstream_handler(httpd_req_t *req)
+{
+    ESP_LOGI(TAG, "Stop stream requested");
+    stream_running = false;
 
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    return httpd_resp_send(req, "OK", 2);
+}
 static esp_err_t cmd_handler(httpd_req_t *req)
 {
     char *buf = NULL;
@@ -214,6 +232,11 @@ static esp_err_t cmd_handler(httpd_req_t *req)
 void startCameraServer()
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.server_port = 80;
+
+    httpd_config_t stream_config = HTTPD_DEFAULT_CONFIG();
+    stream_config.server_port = 81;
+    stream_config.ctrl_port = 32769;
 
     httpd_uri_t index_uri = {
         .uri = "/",
@@ -230,19 +253,25 @@ void startCameraServer()
         .method = HTTP_GET,
         .handler = cmd_handler};
 
+    httpd_uri_t stopstream_uri = {
+        .uri = "/stopstream",
+        .method = HTTP_GET,
+        .handler = stopstream_handler};
+
     httpd_uri_t stream_uri = {
         .uri = "/stream",
         .method = HTTP_GET,
         .handler = stream_handler};
 
-    ESP_LOGI(TAG, "Starting camera server");
-
+    ESP_LOGI(TAG, "Starting control server on port 80");
     httpd_start(&camera_httpd, &config);
+
     httpd_register_uri_handler(camera_httpd, &index_uri);
     httpd_register_uri_handler(camera_httpd, &capture_uri);
     httpd_register_uri_handler(camera_httpd, &control_uri);
+    httpd_register_uri_handler(camera_httpd, &stopstream_uri);
 
-    config.server_port++;
-    httpd_start(&stream_httpd, &config);
+    ESP_LOGI(TAG, "Starting stream server on port 81");
+    httpd_start(&stream_httpd, &stream_config);
     httpd_register_uri_handler(stream_httpd, &stream_uri);
 }
