@@ -1,3 +1,18 @@
+// ============================================================================
+//  Projet ARES
+//  ESP32 + Camera + Controle moteurs
+//
+//  Ce fichier est le coeur du programme.
+//  Il initialise :
+//   - la camera
+//   - le wifi (mode point d'accès autonome)
+//   - le serveur web pour le stream video
+//   - les moteurs de la tourelle
+//   - les boutons de controle local
+//
+//  Ensuite la loop() tourne en permanence pour mettre à jour les moteurs
+//  et lire les commandes (boutons ou commandes HTTP).
+// ============================================================================
 // ===================
 // Select camera model
 // ===================
@@ -5,102 +20,172 @@
 
 // Includes
 #include "esp_camera.h"
-#include "moteur/MotorPan.h"
-#include "moteur/MotorTilt.h"
+#include "moteur/Motor.h"
+#include "button/Button.h"
+#include <Wire.h>
+#include <Adafruit_MCP23X17.h>
 #include <WiFi.h>
 #include "camera/camera_pins.h"
+#include "button/Inter.h"
+#include <ESPmDNS.h>
 
-// Init wifi
-const char *ssid_Router = WIFI_SSID;
-const char *password_Router = WIFI_PASSWORD;
+// ---------------------------------------------------------------------------
+// Déclaration des objets principaux du robot
+// ---------------------------------------------------------------------------
+// MCP : extension de GPIO en I2C pour lire les boutons
+// Motor : classe qui gère les moteurs pas à pas
+// Button : lecture simple d'un bouton
+// Inter  : interrupteur pour choisir LOCAL ou REMOTE
 camera_config_t config;
 
-// Variable pour la capture du moment de demarrage des moteurs
-unsigned long startTimePan = 0;
-unsigned long startTimeTilt = 0;
-
-// Axe vertical (haut / bas)
-MotorTilt motorTilt(2, 12, 13);
-
-// Axe horizontal (gauche / droite)
-MotorPan motorPan(27, 14, 15);
-
-// Durée de marche moteur
-const unsigned long MOTOR_TIME = 200;    // en ms
-const unsigned long STEP_DELAY_US = 800; // vitesse lente et visible
+Adafruit_MCP23X17 mcp;
+Motor motorElevation(32, 8, 9);
+Motor motorCirculaire(33, 10, 11);
+Motor motorFire(12, 12, 13);
+Button btnFire(7);
+Button btnUp(6);
+Button btnDown(5);
+Button btnLeft(4);
+Button btnRight(3);
+Inter interRemote(1);
+bool lastButtonState = false;
 
 void startCameraServer();
 void camera_init();
 
+// ---------------------------------------------------------------------------
+// SETUP
+// Cette fonction est exécutée une seule fois au démarrage de l'ESP32.
+// Elle sert à initialiser tout le système.
+// ---------------------------------------------------------------------------
 void setup()
 {
   Serial.begin(115200);
+  Wire.begin(13, 14);
+  mcp.begin_I2C(0x20);
   Serial.setDebugOutput(true);
   Serial.println();
 
+  // Préparation de la configuration de la caméra
   camera_init();
 
-  // camera init
+  // Initialisation réelle du module caméra
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK)
   {
     Serial.printf("Camera init failed with error 0x%x", err);
-    return;
+    // return;
+  }
+  // Correction de l'orientation de l'image
+  sensor_t *s = esp_camera_sensor_get();
+  if (s)
+  {
+    s->set_hmirror(s, 1);
   }
 
-  WiFi.begin(ssid_Router, password_Router);
-  WiFi.setSleep(false);
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
-  }
+  // Création d'un réseau WiFi autonome
+  // Le PC ou le téléphone se connecte directement à l'ESP32
+  WiFi.softAP("ARES", "12345678");
+
   Serial.println("");
   Serial.println("WiFi connected");
-
+  Serial.println(WiFi.softAPIP());
+  // Démarrage du service mDNS pour accéder au robot via http://ares.local
+  if (!MDNS.begin("ares"))
+  {
+    Serial.println("mDNS failed");
+  }
+  // Démarrage du serveur HTTP qui gère :
+  //  - le streaming vidéo
+  //  - les commandes envoyées depuis la page web
   startCameraServer();
 
   Serial.print("Camera Ready! Use 'http://");
-  Serial.print(WiFi.localIP());
+  Serial.println(WiFi.softAPIP());
   Serial.println("' to connect");
+
+  // Initialisation du matériel de contrôle
+  // boutons physiques + moteurs
+  btnUp.init();
+  btnDown.init();
+  btnLeft.init();
+  btnRight.init();
+  btnFire.init();
+  interRemote.init();
+  motorElevation.init();
+  motorCirculaire.init();
+  motorFire.init();
+  motorElevation.setHold(true);
+  motorFire.setStepInterval(500);
+  motorElevation.setStepInterval(11000);
+  lastButtonState = btnFire.isPressed();
 }
 
+// ---------------------------------------------------------------------------
+// LOOP
+// Cette boucle tourne en permanence.
+// Elle met à jour les moteurs et lit les commandes.
+// ---------------------------------------------------------------------------
 void loop()
 {
-  MotorPan::MotorState panState = motorPan.getState();
-  MotorTilt::MotorState tiltState = motorTilt.getState();
+  // Mise à jour des moteurs
+  // update() génère les impulsions STEP si le moteur est actif
+  motorElevation.update();
+  motorCirculaire.update();
+  motorFire.update();
 
-  // Génération des pas tant que le moteur est actif
-  if (panState != MotorPan::STOP)
+  // Si le robot est en mode REMOTE :
+  // les commandes viennent uniquement du serveur HTTP
+  if (interRemote.getMode() == Inter::REMOTE)
   {
-    //  motorPan.stepOnce();
+    // seulement gérer les états
+    // les pas seront générés dans update()
   }
-
-  if (tiltState != MotorTilt::STOP)
+  // Mode LOCAL : contrôle avec les boutons physiques
+  else
   {
-    motorTilt.stepOnce();
-  }
-
-  delayMicroseconds(STEP_DELAY_US);
-
-  // Arrêt automatique après MOTOR_TIME
-  if (panState != MotorPan::STOP)
-  {
-    if (millis() - startTimePan >= MOTOR_TIME)
+    if (btnUp.isPressed())
     {
-      motorPan.stop();
+      if (motorElevation.getState() != Motor::UP)
+        motorElevation.up();
     }
-  }
-
-  if (tiltState != MotorTilt::STOP)
-  {
-    if (millis() - startTimeTilt >= MOTOR_TIME)
+    else if (btnDown.isPressed())
     {
-      motorTilt.stop();
+      if (motorElevation.getState() != Motor::DOWN)
+        motorElevation.down();
     }
+    else
+    {
+      motorElevation.stop();
+    }
+    if (btnLeft.isPressed())
+    {
+      if (motorCirculaire.getState() != Motor::UP)
+        motorCirculaire.up();
+    }
+    else if (btnRight.isPressed())
+    {
+      if (motorCirculaire.getState() != Motor::DOWN)
+        motorCirculaire.down();
+    }
+    else
+    {
+      motorCirculaire.stop();
+    }
+    // Détection du tir
+    // On détecte le front du bouton (appui unique)
+    bool currentState = btnFire.isPressed();
+    if (currentState && !lastButtonState)
+      motorFire.startFireCycle(1000);
+
+    lastButtonState = currentState;
   }
 }
-
+// ---------------------------------------------------------------------------
+// Configuration de la caméra
+// Cette fonction remplit la structure camera_config_t
+// avec tous les paramètres nécessaires au driver ESP32.
+// ---------------------------------------------------------------------------
 void camera_init()
 {
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -122,11 +207,11 @@ void camera_init()
   config.pin_pwdn = PWDN_GPIO_NUM;
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 10000000;
-  config.frame_size = FRAMESIZE_QVGA;
+  config.frame_size = FRAMESIZE_SVGA;
   config.pixel_format = PIXFORMAT_JPEG; // for streaming
   // config.pixel_format = PIXFORMAT_RGB565; // for face detection/recognition
   config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
   config.fb_location = CAMERA_FB_IN_PSRAM;
-  config.jpeg_quality = 20;
-  config.fb_count = 1;
+  config.jpeg_quality = 15;
+  config.fb_count = 2;
 }

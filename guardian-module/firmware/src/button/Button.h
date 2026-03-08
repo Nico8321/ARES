@@ -9,6 +9,8 @@ private:
 
 public:
     Button(int gpio);
+
+    void init();
     bool isPressed(); // methode pour si appuyer
     bool getState();  // methode pour recuperer l'etat
 };
