@@ -1,6 +1,23 @@
-
 # ARES
 **ARES – Assisted Remote Engagement System**
+
+## Sommaire
+
+
+- [Aperçu du système](#aperçu-du-système)
+- [Description du système](#description-du-système)
+- [Fonctionnalités](#fonctionnalités)
+- [Architecture matérielle](#architecture-matérielle)
+- [Architecture du firmware](#architecture-du-firmware)
+- [Modes de fonctionnement](#modes-de-fonctionnement)
+- [Connexion](#connexion)
+- [Compilation](#compilation)
+  
+## Aperçu du système
+
+![Tourelle ARES](guardian-module/hardware/Photos/ARES_capture.PNG)
+
+![Tourelle ARES](guardian-module/hardware/Photos/ARES_capture2.PNG)
 
 ARES est une plateforme robotique expérimentale basée sur **ESP32-CAM** combinant vision embarquée, contrôle moteur et interface web.
 
@@ -43,16 +60,27 @@ L’objectif principal du projet est d’expérimenter des systèmes embarqués 
 - Architecture firmware non bloquante
 
 ---
+# Architecture matérielle
 
-# Matériel
+Le système est composé de deux sous-ensembles principaux :
 
-- ESP32-CAM (WROVER)
-- 3 moteurs pas à pas **NEMA17**
-- Drivers **DRV8825**
-- Extension GPIO **MCP23017**
-- Boutons physiques de contrôle
-- Alimentation **12V**
+### Module Guardian (tourelle)
+
+- ESP32-CAM
+- 3 moteurs NEMA17
+- Drivers DRV8825
+- Extension GPIO MCP23017
+- caméra embarquée
 - Mécanisme airsoft basse puissance (expérimental)
+
+### Station opérateur
+
+Interface de contrôle permettant :
+
+- visualisation du flux vidéo
+- contrôle des moteurs
+- déclenchement du mécanisme
+
 
 ---
 
@@ -128,17 +156,17 @@ http://192.168.4.1
 Le firmware est développé avec **PlatformIO**.
 
 Pour compiler le projet :
-
+```bash
 pio run
-
+```
 Pour flasher l’ESP32 :
-
+```bash
 pio run -t upload
-
+```
 Pour ouvrir le moniteur série :
-
+```bash
 pio device monitor
-
+```
 ---
 
 # Statut
@@ -164,3 +192,7 @@ ARES est un projet expérimental destiné à l’apprentissage et à la recherch
 Le système doit être utilisé uniquement dans un environnement privé et contrôlé.
 
 L'utilisateur est responsable de respecter les réglementations locales concernant l'utilisation de dispositifs airsoft ou similaires.
+
+# Licence
+
+Projet distribué à des fins éducatives et expérimentales.
