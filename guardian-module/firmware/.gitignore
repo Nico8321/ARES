@@ -14,3 +14,7 @@ dist/
 
 # Logs
 *.log
+
+# Env
+.env
+.env.*
