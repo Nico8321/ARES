@@ -16,9 +16,8 @@
 ## Aperçu du système
 
 ![Tourelle ARES](guardian-module/hardware/Photos/ARES_capture.PNG)
-
-![Tourelle ARES](guardian-module/hardware/Photos/ARES_capture2.PNG)
-
+![Tourelle ARES](guardian-module/hardware/Photos/ARES_capture2.jpeg)
+![Tourelle ARES](guardian-module/hardware/Photos/ARES_capture4.jpeg)
 ARES est une plateforme robotique expérimentale basée sur une architecture **à deux ESP32** : un ESP32 dédié au contrôle du robot et un **ESP32‑CAM** dédié au streaming vidéo.
 
 Le système permet de contrôler à distance l’orientation d’une tourelle robotisée et de visualiser en temps réel le flux vidéo de la caméra via une interface web embarquée.
