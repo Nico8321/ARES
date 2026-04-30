@@ -52,7 +52,7 @@ void Motor::disable()
 void Motor::up()
 {
     enable();
-    mcp.digitalWrite(pinDir, LOW);
+    mcp.digitalWrite(pinDir, _invertDir ? HIGH : LOW);
     state = UP;
     _lastStepTime = micros();
 }
@@ -61,7 +61,7 @@ void Motor::up()
 void Motor::down()
 {
     enable();
-    mcp.digitalWrite(pinDir, HIGH);
+    mcp.digitalWrite(pinDir, _invertDir ? LOW : HIGH);
     state = DOWN;
     _lastStepTime = micros();
 }
@@ -164,4 +164,10 @@ void Motor::setHold(bool hold)
 void Motor::setStepInterval(unsigned long interval)
 {
     _stepInterval = interval;
+}
+
+// Inverse le sens logique UP/DOWN pour un moteur spécifique
+void Motor::setInvert(bool invert)
+{
+    _invertDir = invert;
 }

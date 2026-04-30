@@ -18,6 +18,7 @@
 
 #include "moteur/Motor.h"
 #include "button/Button.h"
+#include "laser/Laser.h"
 #include <Wire.h>
 #include <Adafruit_MCP23X17.h>
 #include <WiFi.h>
@@ -42,6 +43,7 @@ Button btnDown(5);
 Button btnLeft(4);
 Button btnRight(3);
 Inter interRemote(1);
+Laser laser(23);
 bool lastButtonState = false;
 
 void startCameraServer();
@@ -92,9 +94,11 @@ void setup()
   motorCirculaire.init();
   motorFire.init();
   motorElevation.setHold(true);
-  motorFire.setStepInterval(500);
+  motorFire.setStepInterval(2000);
+  motorFire.setInvert(true);
   motorElevation.setStepInterval(11000);
   lastButtonState = btnFire.isPressed();
+  laser.init();
 }
 
 // ---------------------------------------------------------------------------

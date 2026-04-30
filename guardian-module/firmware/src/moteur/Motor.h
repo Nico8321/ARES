@@ -20,6 +20,7 @@ private:
     bool _cycleActive = false;
     bool _goingUp = true;
     bool _holdPosition = false;
+    bool _invertDir = false;
 
     int _targetSteps = 0;
     int _currentSteps = 0;
@@ -44,8 +45,7 @@ public:
     void update();
     void setHold(bool hold);
     void setStepInterval(unsigned long interval);
-
-    MotorState getState();
+    void setInvert(bool invert);
 };
 
 #endif

@@ -12,12 +12,14 @@
 #include <string.h>
 #include <Arduino.h>
 #include "moteur/Motor.h"
+#include "laser/Laser.h"
 
 // Accès aux moteurs déclarés dans main.cpp
 // Permet de contrôler la tourelle depuis les requêtes HTTP
 extern Motor motorCirculaire;
 extern Motor motorElevation;
 extern Motor motorFire;
+extern Laser laser;
 
 static const char *TAG = "camera_httpd";
 
@@ -94,8 +96,7 @@ static esp_err_t cmd_handler(httpd_req_t *req)
 
     // Commandes de la tourelle
     // pan  -> rotation horizontale
-    // tilt -> rotation verticale
-    // Fire -> cycle de tir
+
     if (!strcmp(var, "pan"))
     {
         if (val == -1)
@@ -110,7 +111,7 @@ static esp_err_t cmd_handler(httpd_req_t *req)
         {
             motorCirculaire.stop();
         }
-    }
+    } // tilt -> rotation verticale
     else if (!strcmp(var, "tilt"))
     {
         if (val == -1)
@@ -125,12 +126,23 @@ static esp_err_t cmd_handler(httpd_req_t *req)
         {
             motorElevation.stop();
         }
-    } // commande Mise de feu
+    } // Fire -> cycle de tir
     else if (!strcmp(var, "Fire"))
     {
         if (val == 1)
         {
             motorFire.startFireCycle(1100);
+        }
+    }
+    else if (!strcmp(var, "laser"))
+    {
+        if (val == 1)
+        {
+            laser.on();
+        }
+        else if (val == 0)
+        {
+            laser.off();
         }
     }
     else
