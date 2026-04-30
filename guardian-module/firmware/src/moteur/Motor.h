@@ -46,6 +46,7 @@ public:
     void setHold(bool hold);
     void setStepInterval(unsigned long interval);
     void setInvert(bool invert);
+    MotorState getState();
 };
 
 #endif
