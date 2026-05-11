@@ -1,8 +1,7 @@
-#ifndef MOTOR_H
-#define MOTOR_H
+#pragma once
 
 #include <Arduino.h>
-
+#include "../Config.h"
 class Motor
 {
 public:
@@ -26,7 +25,7 @@ private:
     int _currentSteps = 0;
 
     unsigned long _lastStepTime = 0;
-    unsigned long _stepInterval = 6000; // microsecondes entre steps
+    unsigned long _stepInterval = config::MOTOR_DEFAULT_STEP_INTERVAL; // microsecondes entre steps
     MotorState state;
 
 public:
@@ -48,5 +47,3 @@ public:
     void setInvert(bool invert);
     MotorState getState();
 };
-
-#endif

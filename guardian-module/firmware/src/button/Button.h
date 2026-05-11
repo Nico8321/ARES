@@ -1,5 +1,4 @@
-#ifndef BUTTON_H
-#define BUTTON_H
+#pragma once
 #include <Arduino.h>
 class Button
 {
@@ -14,4 +13,3 @@ public:
     bool isPressed(); // methode pour si appuyer
     bool getState();  // methode pour recuperer l'etat
 };
-#endif

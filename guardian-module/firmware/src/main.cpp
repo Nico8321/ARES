@@ -24,6 +24,7 @@
 #include <WiFi.h>
 #include "button/Inter.h"
 #include <ESPmDNS.h>
+#include "Config.h"
 
 // ---------------------------------------------------------------------------
 // Déclaration des objets principaux du robot
@@ -34,16 +35,16 @@
 // Inter  : interrupteur pour choisir LOCAL ou REMOTE
 
 Adafruit_MCP23X17 mcp;
-Motor motorElevation(32, 8, 9);
-Motor motorCirculaire(33, 10, 11);
-Motor motorFire(12, 12, 13);
-Button btnFire(7);
-Button btnUp(6);
-Button btnDown(5);
-Button btnLeft(4);
-Button btnRight(3);
-Inter interRemote(1);
-Laser laser(23);
+Motor motorElevation(config::PIN_MOTOR_ELEV_STEP, config::PIN_MOTOR_ELEV_DIR, config::PIN_MOTOR_ELEV_EN);
+Motor motorCirculaire(config::PIN_MOTOR_CIRC_STEP, config::PIN_MOTOR_CIRC_DIR, config::PIN_MOTOR_CIRC_EN);
+Motor motorFire(config::PIN_MOTOR_FIRE_STEP, config::PIN_MOTOR_FIRE_DIR, config::PIN_MOTOR_FIRE_EN);
+Button btnFire(config::PIN_BTN_FIRE);
+Button btnUp(config::PIN_BTN_UP);
+Button btnDown(config::PIN_BTN_DOWN);
+Button btnLeft(config::PIN_BTN_LEFT);
+Button btnRight(config::PIN_BTN_RIGHT);
+Inter interRemote(config::PIN_INTER_REMOTE);
+Laser laser(config::PIN_LASER);
 bool lastButtonState = false;
 
 void startCameraServer();
@@ -63,7 +64,7 @@ void setup()
 
   // Création d'un réseau WiFi autonome
   // Le PC ou le téléphone se connecte directement à l'ESP32
-  WiFi.softAP("ARES", "12345678");
+  WiFi.softAP(config::WIFI_SSID, config::WIFI_PASSWORD);
 
   Serial.println("");
   Serial.println("WiFi connected");
@@ -94,9 +95,9 @@ void setup()
   motorCirculaire.init();
   motorFire.init();
   motorElevation.setHold(true);
-  motorFire.setStepInterval(2000);
+  motorFire.setStepInterval(config::MOTOR_FIRE_STEP_INTERVAL);
   motorFire.setInvert(true);
-  motorElevation.setStepInterval(11000);
+  motorElevation.setStepInterval(config::MOTOR_ELEV_STEP_INTERVAL);
   lastButtonState = btnFire.isPressed();
   laser.init();
 }
@@ -156,7 +157,7 @@ void loop()
     // On détecte le front du bouton (appui unique)
     bool currentState = btnFire.isPressed();
     if (currentState && !lastButtonState)
-      motorFire.startFireCycle(1000);
+      motorFire.startFireCycle(config::FIRE_CYCLE);
 
     lastButtonState = currentState;
   }

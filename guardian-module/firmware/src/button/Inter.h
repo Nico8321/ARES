@@ -1,5 +1,5 @@
-#ifndef INTER_H
-#define INTER_H
+#pragma once
+
 #include <Arduino.h>
 class Inter
 {
@@ -17,4 +17,3 @@ public:
     void init();
     Mode getMode();
 };
-#endif

@@ -1,5 +1,4 @@
-#ifndef LASER_H
-#define LASER_H
+#pragma once
 
 #include <Arduino.h>
 
@@ -20,5 +19,3 @@ public:
     void toggle();
     bool getState();
 };
-
-#endif

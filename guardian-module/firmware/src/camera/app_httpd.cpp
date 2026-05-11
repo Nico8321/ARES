@@ -13,6 +13,7 @@
 #include <Arduino.h>
 #include "moteur/Motor.h"
 #include "laser/Laser.h"
+#include "../Config.h"
 
 // Accès aux moteurs déclarés dans main.cpp
 // Permet de contrôler la tourelle depuis les requêtes HTTP
@@ -131,7 +132,7 @@ static esp_err_t cmd_handler(httpd_req_t *req)
     {
         if (val == 1)
         {
-            motorFire.startFireCycle(1100);
+            motorFire.startFireCycle(config::FIRE_CYCLE);
         }
     }
     else if (!strcmp(var, "laser"))
@@ -167,7 +168,7 @@ httpd_handle_t camera_httpd = NULL;
 void startCameraServer()
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.server_port = 80;
+    config.server_port = config::HTTP_PORT;
 
     httpd_uri_t index_uri = {
         .uri = "/",
