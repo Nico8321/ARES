@@ -9,25 +9,25 @@
 - [Fonctionnalités](#fonctionnalités)
 - [Architecture matérielle](#architecture-matérielle)
 - [Architecture du firmware](#architecture-du-firmware)
-- [Modes de fonctionnement](#modes-de-fonctionnement)
+- [Commandes HTTP](#commandes-http)
 - [Connexion](#connexion)
 - [Compilation](#compilation)
 
 ## Aperçu du système
 
 ![Tourelle ARES](guardian-module/hardware/Photos/ARES_capture.PNG)
-![Tourelle ARES](guardian-module/hardware/Photos/ARES_capture2.jpeg)
+![Tourelle ARES](guardian-module/hardware/Photos/ARES_capture5.jpeg)
 ![Tourelle ARES](guardian-module/hardware/Photos/ARES_capture4.jpeg)
-ARES est une plateforme robotique expérimentale basée sur une architecture **à deux ESP32** : un ESP32 dédié au contrôle du robot et un **ESP32‑CAM** dédié au streaming vidéo.
+ARES est une plateforme robotique expérimentale composée de trois modules ESP32 : un contrôleur de tourelle, un contrôleur de châssis mecanum et un **ESP32‑CAM** dédié au streaming vidéo.
 
-Le système permet de contrôler à distance l’orientation d’une tourelle robotisée et de visualiser en temps réel le flux vidéo de la caméra via une interface web embarquée.
+Une interface web permet de piloter à distance le châssis et la tourelle, de visualiser le flux vidéo et de sélectionner une zone à suivre dans l’image.
 
 Le projet combine plusieurs domaines :
 
 - vision embarquée
 - contrôle de moteurs pas à pas
 - interface web embarquée
-- contrôle local et distant
+- contrôle distant du châssis et de la tourelle
 - robotique expérimentale
 
 ---
@@ -36,19 +36,20 @@ Le projet combine plusieurs domaines :
 
 ARES est une plateforme robotique expérimentale permettant d’explorer différents concepts de robotique embarquée.
 
-L’architecture actuelle repose sur une séparation des responsabilités :
+L’architecture repose sur une séparation des responsabilités :
 
-- **ESP32 contrôleur** : gestion des moteurs, des entrées physiques et de l’interface de commande
-- **ESP32‑CAM** : gestion indépendante de la caméra et du streaming vidéo
+- **ESP32 de la tourelle** : moteurs pas à pas, commandes HTTP et interface web
+- **ESP32 du châssis** : quatre moteurs à courant continu et déplacement mecanum
+- **ESP32‑CAM** : caméra et streaming vidéo MJPEG
 
-Cette séparation permet d’isoler la charge réseau et vidéo du contrôle temps réel du robot.
+La séparation des modules isole le streaming vidéo des commandes de déplacement et de tourelle.
 
 Le prototype actuel utilise un **mécanisme airsoft basse puissance** intégré à la tourelle afin de tester le contrôle mécanique du système et la synchronisation entre :
 
 - les moteurs
 - l’interface web
 - le retour vidéo
-- les commandes locales
+- les commandes de déplacement du châssis
 
 L’objectif principal du projet est d’expérimenter des systèmes embarqués combinant **vision, contrôle moteur et interface réseau**.
 
@@ -57,11 +58,11 @@ L’objectif principal du projet est d’expérimenter des systèmes embarqués 
 # Fonctionnalités
 
 - Streaming vidéo temps réel depuis un ESP32‑CAM dédié
-- Contrôle des moteurs de la tourelle via interface web
-- Mode WiFi autonome (ESP32 en point d’accès)
+- Contrôle des moteurs de la tourelle et du châssis via interface web
+- Suivi visuel côté navigateur d’une zone sélectionnée dans la vidéo
+- Commande du pointeur laser depuis l’interface web
+- Mode Wi‑Fi autonome, avec l’ESP32 de la tourelle comme point d’accès
 - Accès via `http://ares.local`
-- Contrôle local via boutons physiques
-- Sélecteur de mode **LOCAL / REMOTE**
 - Mécanisme de tir contrôlé par moteur pas à pas
 - Architecture firmware non bloquante
 
@@ -69,7 +70,7 @@ L’objectif principal du projet est d’expérimenter des systèmes embarqués 
 
 # Architecture matérielle
 
-Le système est composé de deux sous-ensembles principaux :
+Le système est composé de trois modules principaux :
 
 ### Module Guardian (contrôle de la tourelle)
 
@@ -77,8 +78,15 @@ Le système est composé de deux sous-ensembles principaux :
 - 3 moteurs NEMA17
 - Drivers DRV8825
 - Extension GPIO MCP23017
-- caméra embarquée
+- pointeur laser commandé par l’ESP32
+- serveur HTTP pour l’interface et les commandes
 - Mécanisme airsoft basse puissance (expérimental)
+
+### Module châssis
+
+- ESP32-S3
+- quatre moteurs à courant continu pilotés par deux cartes TB6612
+- roues mecanum pour avancer, reculer, tourner et se déplacer latéralement
 
 ### Module caméra
 
@@ -93,16 +101,18 @@ Interface de contrôle permettant :
 
 - visualisation du flux vidéo
 - contrôle des moteurs
+- activation et désactivation du pointeur laser
 - déclenchement du mécanisme
 
 ---
 
 # Architecture du firmware
 
-Le firmware est réparti sur deux microcontrôleurs :
+Le firmware est réparti entre trois microcontrôleurs :
 
-- **ESP32 contrôleur** : logique du robot et interface de commande
-- **ESP32‑CAM** : gestion du streaming vidéo
+- [`guardian-module/firmware`](guardian-module/firmware) : tourelle et interface web
+- [`guardian-module/chassis-firmware`](guardian-module/chassis-firmware) : déplacement mecanum
+- [`guardian-module/firmwareEspCam`](guardian-module/firmwareEspCam) : caméra et streaming vidéo
 
 Le firmware est structuré autour de plusieurs modules :
 
@@ -114,17 +124,6 @@ Gestion générique des moteurs pas à pas :
 - gestion des directions
 - gestion des intervalles de pas
 - fonctionnement non bloquant via `update()`
-
-## Button
-
-Lecture des boutons physiques via l’extension GPIO.
-
-## Inter
-
-Gestion du sélecteur de mode :
-
-- LOCAL
-- REMOTE
 
 ## Camera
 
@@ -139,98 +138,75 @@ Orchestration générale du système :
 - gestion des moteurs
 - lecture des commandes
 
----
+### Châssis
 
-# Modes de fonctionnement
+- `MotorDC` pilote chaque moteur de roue.
+- `MecanumChassis` combine les roues pour les translations et rotations.
+- `Serveur.cpp` reçoit les commandes HTTP sur le port 80.
 
-## Mode REMOTE
+## Commandes HTTP
 
-Le contrôle est effectué via l’interface web :
+Le contrôleur du châssis accepte `GET /control?cmd=...` avec les commandes `forward`, `backward`, `strafe_left`, `strafe_right`, `rotate_left`, `rotate_right` et `stop`. Le paramètre `speed` est facultatif et borné entre 0 et 255.
 
-- orientation de la tourelle
-- déclenchement du mécanisme
-- visualisation du flux vidéo
+Le contrôleur de la tourelle accepte `GET /control?var=pan&val=-1|0|1` et `GET /control?var=tilt&val=-1|0|1` pour les mouvements. La page commande le pointeur laser avec `GET /control?var=laser&val=1` (marche) ou `val=0` (arrêt), et lance un cycle de tir avec `GET /control?var=Fire&val=1`.
 
-## Mode LOCAL
-
-Le contrôle est effectué via les boutons physiques présents sur le robot.
+La sélection dans l’interface suit l’apparence d’une zone de l’image ; ce n’est pas une détection automatique par catégorie.
 
 ---
 
 # Connexion
 
-Le **ESP32 contrôleur** crée son propre réseau WiFi en mode **point d’accès (Access Point)**.
+L’ESP32 de la tourelle crée le réseau Wi‑Fi en mode **point d’accès (Access Point)**.
 
-Le **ESP32‑CAM** se connecte à ce réseau comme un client WiFi.
+L’ESP32‑CAM et le contrôleur de châssis se connectent à ce réseau comme clients Wi‑Fi.
 
 L’architecture réseau fonctionne alors de la manière suivante :
 
 1. L’utilisateur se connecte au réseau WiFi **ARES**.
-2. L’interface web est servie par le **ESP32 contrôleur**.
-3. La page web intègre le flux vidéo provenant du **ESP32‑CAM**.
-4. Le navigateur récupère donc :
-   - l’interface de contrôle depuis l’ESP32 contrôleur
-   - le flux vidéo depuis l’ESP32‑CAM.
+2. L’interface web est servie par l’ESP32 de la tourelle via `http://ares.local`.
+3. La page envoie les commandes de déplacement à `http://areschassis.local`.
+4. Le flux vidéo provient de `http://arescam.local:81/stream`.
 
-Cette architecture permet de séparer :
+Cette architecture sépare :
 
-- le **contrôle temps réel du robot** (ESP32 contrôleur)
-- le **traitement et la diffusion vidéo** (ESP32‑CAM).
+- le contrôle de la tourelle
+- le contrôle du châssis
+- la diffusion vidéo.
 
-Le contrôleur ne traite pas la vidéo, ce qui évite de surcharger le microcontrôleur responsable du pilotage des moteurs.
-
-Configuration du réseau WiFi :
-
-SSID : ARES
-Mot de passe : 12345678
-
-Interface web :
-
-http://ares.local
-
-ou
-
-http://192.168.4.1
+Configure le même SSID et le même mot de passe dans les fichiers de configuration des trois modules. N’utilise pas un mot de passe personnel dans le dépôt public.
 
 ---
 
 # Compilation
 
-Le firmware est développé avec **PlatformIO**.
-
-Pour compiler le projet :
+Chaque firmware est un projet PlatformIO distinct. Depuis la racine du dépôt, compile chaque module depuis son dossier :
 
 ```bash
+cd guardian-module/firmware
 pio run
 ```
 
-Pour flasher l’ESP32 :
+Châssis :
 
 ```bash
-pio run -t upload
+cd guardian-module/chassis-firmware
+pio run
 ```
 
-Pour ouvrir le moniteur série :
+Caméra :
 
 ```bash
-pio device monitor
+cd guardian-module/firmwareEspCam
+pio run
 ```
+
+Pour flasher un module, lance `pio run -t upload` depuis son dossier. Pour ouvrir son moniteur série, lance `pio device monitor` depuis le même dossier.
 
 ---
 
 # Statut
 
-Projet expérimental en développement.
-
-Le firmware actuel est **fonctionnel sur le matériel** :
-
-- contrôle des moteurs
-- streaming vidéo
-- contrôle local via boutons
-- contrôle distant via interface web
-- mécanisme airsoft fonctionnel
-
-Cette architecture pose les bases pour les évolutions futures du système **ARES**.
+Projet expérimental en développement. Le dépôt regroupe les firmwares du châssis, de la tourelle et de la caméra ainsi que l’interface web. Le fonctionnement complet dépend de la configuration et du matériel utilisés.
 
 ---
 
