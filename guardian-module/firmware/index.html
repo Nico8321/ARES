@@ -1,0 +1,1454 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>ARES — Tactical Interface</title>
+    <style>
+      :root {
+        --cyan: #00c8ff;
+        --cyan-dim: rgba(0, 200, 255, 0.12);
+        --cyan-border: rgba(0, 200, 255, 0.25);
+        --cyan-bright: rgba(0, 200, 255, 0.7);
+        --red: #ff3034;
+        --red-dim: rgba(255, 48, 52, 0.15);
+        --red-glow: rgba(255, 48, 52, 0.5);
+        --green: #00ff88;
+        --bg: #020a12;
+        --mono: "Courier New", Courier, monospace;
+        --body: Arial, Helvetica, sans-serif;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: var(--body);
+        background: var(--bg);
+        color: var(--cyan);
+        font-size: 16px;
+        height: 100vh;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* SCANLINES — léger, pas d'animation */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 200, 255, 0.012) 2px, rgba(0, 200, 255, 0.012) 4px);
+        pointer-events: none;
+        z-index: 900;
+      }
+
+      /* VIGNETTE */
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.75) 100%);
+        pointer-events: none;
+        z-index: 901;
+      }
+
+      /* STREAM */
+      #content {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      figure {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      .image-container {
+        width: 100%;
+        height: 100%;
+        position: relative;
+      }
+
+      #track-panel {
+        position: fixed;
+        z-index: 960;
+        left: 50%;
+        top: 5.5rem;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0.55rem 0.75rem;
+        background: rgba(2, 10, 18, 0.92);
+        border: 1px solid var(--cyan-border);
+        border-radius: 8px;
+        font: 12px var(--mono);
+      }
+
+      #track-status { min-width: 135px; color: var(--cyan); }
+      #track-panel button {
+        color: var(--bg);
+        background: var(--cyan);
+        border: 0;
+        border-radius: 4px;
+        padding: 0.45rem 0.65rem;
+        font: bold 11px var(--mono);
+        cursor: pointer;
+      }
+      #track-stop { background: var(--red) !important; }
+
+      #tracking-overlay {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 5;
+        pointer-events: none;
+      }
+
+      #stream {
+        width: 100vw;
+        height: 100vh;
+        object-fit: cover;
+        filter: contrast(1.2) saturate(1.05) brightness(1.05);
+        transition:
+          transform 0.35s ease,
+          filter 0.35s ease;
+      }
+
+      .zoom-x2 #stream {
+        transform: scale(2);
+        transform-origin: center center;
+        filter: contrast(1.3) brightness(1.1);
+      }
+
+      /* HEADER HUD */
+      .hud-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 950;
+        padding: 0.75rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(180deg, rgba(2, 10, 18, 0.95) 0%, transparent 100%);
+        border-bottom: 1px solid var(--cyan-border);
+      }
+
+      .hud-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .hud-hex {
+        width: 28px;
+        height: 28px;
+        background: var(--cyan-dim);
+        border: 1px solid var(--cyan-border);
+        clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      }
+
+      .hud-title {
+        font-family: var(--mono);
+        font-size: 1rem;
+        font-weight: 900;
+        color: var(--cyan);
+        letter-spacing: 0.3em;
+        text-shadow: 0 0 20px rgba(0, 200, 255, 0.5);
+      }
+
+      .hud-subtitle {
+        font-size: 0.55rem;
+        color: rgba(0, 200, 255, 0.35);
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+
+      .hud-center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.2rem;
+      }
+
+      .hud-mode {
+        font-family: var(--mono);
+        font-size: 0.6rem;
+        color: var(--red);
+        letter-spacing: 0.3em;
+        text-shadow: 0 0 10px var(--red-glow);
+      }
+
+      .hud-status-bar {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+      }
+
+      .status-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15rem;
+      }
+
+      .status-label {
+        font-family: var(--mono);
+        font-size: 0.42rem;
+        color: rgba(0, 200, 255, 0.35);
+        letter-spacing: 0.15em;
+      }
+
+      .status-val {
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--cyan);
+      }
+
+      .status-val.ok {
+        color: var(--green);
+      }
+      .status-val.warn {
+        color: var(--red);
+      }
+
+      .hud-clock {
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--cyan);
+        letter-spacing: 0.1em;
+        min-width: 90px;
+        text-align: right;
+      }
+
+      /* CORNERS */
+      .corner {
+        position: fixed;
+        width: 50px;
+        height: 50px;
+        z-index: 960;
+        pointer-events: none;
+      }
+      .corner.tl {
+        top: 10px;
+        left: 10px;
+        border-top: 1px solid var(--cyan-bright);
+        border-left: 1px solid var(--cyan-bright);
+      }
+      .corner.tr {
+        top: 10px;
+        right: 10px;
+        border-top: 1px solid var(--cyan-bright);
+        border-right: 1px solid var(--cyan-bright);
+      }
+      .corner.bl {
+        bottom: 10px;
+        left: 10px;
+        border-bottom: 1px solid var(--cyan-bright);
+        border-left: 1px solid var(--cyan-bright);
+      }
+      .corner.br {
+        bottom: 10px;
+        right: 10px;
+        border-bottom: 1px solid var(--cyan-bright);
+        border-right: 1px solid var(--cyan-bright);
+      }
+
+      /* CROSSHAIR — statique, pas de rotation */
+      .crosshair {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 160px;
+        height: 160px;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        z-index: 920;
+      }
+
+      .crosshair-ring {
+        position: absolute;
+        inset: 0;
+        border: 1px solid rgba(0, 200, 255, 0.2);
+        border-radius: 50%;
+      }
+
+      .crosshair-ring-inner {
+        position: absolute;
+        inset: 20px;
+        border: 1px solid rgba(0, 200, 255, 0.12);
+        border-radius: 50%;
+      }
+
+      .center-dot {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 6px;
+        height: 6px;
+        background: var(--red);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 8px var(--red-glow);
+      }
+
+      .line {
+        position: absolute;
+        background: var(--red);
+      }
+      .line.top {
+        width: 1px;
+        height: 45px;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      .line.bottom {
+        width: 1px;
+        height: 45px;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      .line.left {
+        height: 1px;
+        width: 45px;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+      .line.right {
+        height: 1px;
+        width: 45px;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+
+      .tick {
+        position: absolute;
+        background: rgba(0, 200, 255, 0.35);
+      }
+      .tick.t1 {
+        top: calc(50% - 30px);
+        left: 50%;
+        width: 1px;
+        height: 6px;
+      }
+      .tick.t2 {
+        top: calc(50% + 24px);
+        left: 50%;
+        width: 1px;
+        height: 6px;
+      }
+      .tick.t3 {
+        left: calc(50% - 30px);
+        top: 50%;
+        height: 1px;
+        width: 6px;
+      }
+      .tick.t4 {
+        left: calc(50% + 24px);
+        top: 50%;
+        height: 1px;
+        width: 6px;
+      }
+
+      /* SIDE PANELS */
+      .side-panel {
+        position: fixed;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 940;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 1rem;
+        background: linear-gradient(180deg, transparent, rgba(2, 10, 18, 0.65), transparent);
+      }
+
+      .side-panel.left {
+        left: 0;
+        align-items: flex-start;
+      }
+      .side-panel.right {
+        right: 0;
+        align-items: flex-end;
+      }
+
+      .data-row {
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+      }
+
+      .data-key {
+        font-family: var(--mono);
+        font-size: 0.42rem;
+        color: rgba(0, 200, 255, 0.3);
+        letter-spacing: 0.15em;
+      }
+
+      .data-val {
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--cyan);
+      }
+
+      .data-bar {
+        width: 80px;
+        height: 2px;
+        background: rgba(0, 200, 255, 0.1);
+        border: 1px solid var(--cyan-border);
+        overflow: hidden;
+      }
+
+      .data-bar-fill {
+        height: 100%;
+        background: var(--cyan);
+        transition: width 0.5s ease;
+      }
+
+      /* JOYSTICK */
+      .joystick {
+        position: fixed;
+        bottom: 40px;
+        width: 160px;
+        height: 160px;
+        z-index: 1000;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        place-items: center;
+      }
+      .strafe-cmd {
+        position: fixed;
+        bottom: 100px;
+        left: 210px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+      }
+      .strafe-cmd button {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: 1px solid var(--cyan-border);
+        background: rgba(0, 200, 255, 0.08);
+        color: var(--cyan);
+        font-size: 16px;
+        cursor: pointer;
+        font-family: var(--mono);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        transition: background 0.1s;
+      }
+
+      .strafe-cmd button:active,
+      .strafe-cmd button.gp-active {
+        background: rgba(0, 200, 255, 0.25);
+        box-shadow: 0 0 12px rgba(0, 200, 255, 0.35);
+        transform: scale(0.92);
+      }
+       .joystick .strafe-l {
+        top: 30px;
+        left: 10px;
+        font-size: 14px;
+      }
+      .joystick .strafe-r {
+        top: 30px;
+        right: 10px;
+        font-size: 14px;
+      }
+
+      .chassis-joystick {
+        left: 40px;
+      }
+
+      .turret-joystick {
+        right: 40px;
+      }
+
+      .joystick::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 1px solid var(--cyan-border);
+        background: radial-gradient(circle, rgba(0, 200, 255, 0.05) 0%, rgba(2, 10, 18, 0.85) 70%);
+        pointer-events: none;
+      }
+
+      .joystick::after {
+        content: "";
+        position: absolute;
+        inset: 10px;
+        border-radius: 50%;
+        border: 1px solid rgba(0, 200, 255, 0.1);
+        pointer-events: none;
+      }
+
+      .joystick button {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: 1px solid var(--cyan-border);
+        background: rgba(0, 200, 255, 0.08);
+        color: var(--cyan);
+        font-size: 16px;
+        cursor: pointer;
+        position: relative;
+        z-index: 1;
+        font-family: var(--mono);
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        margin: 0;
+        transition: background 0.1s;
+      }
+
+      .joystick button:active,
+      .joystick button.gp-active {
+        background: rgba(0, 200, 255, 0.25);
+        box-shadow: 0 0 12px rgba(0, 200, 255, 0.35);
+        transform: scale(0.92);
+      }
+
+      .joystick .center {
+        display: none;
+      }
+      .joystick .up {
+        grid-column: 2;
+        grid-row: 1;
+      }
+      .joystick .left {
+        grid-column: 1;
+        grid-row: 2;
+      }
+      .joystick .right {
+        grid-column: 3;
+        grid-row: 2;
+      }
+      .joystick .down {
+        grid-column: 2;
+        grid-row: 3;
+      }
+
+      /* FIRE */
+      #fire {
+        position: fixed;
+        bottom: 230px;
+        right: 40px;
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 2px solid var(--red);
+        background: var(--red-dim);
+        color: var(--red);
+        font-family: var(--mono);
+        font-size: 0.55rem;
+        font-weight: 900;
+        letter-spacing: 0.2em;
+        cursor: pointer;
+        z-index: 1000;
+        text-shadow: 0 0 8px var(--red-glow);
+        box-shadow:
+          0 0 15px var(--red-dim),
+          inset 0 0 15px var(--red-dim);
+        transition:
+          box-shadow 0.1s,
+          background 0.1s;
+      }
+
+      #fire:active,
+      #fire.gp-active {
+        background: rgba(255, 48, 52, 0.4);
+        box-shadow:
+          0 0 40px var(--red-glow),
+          inset 0 0 30px rgba(255, 48, 52, 0.3);
+        transform: scale(0.94);
+      }
+
+      /* ZOOM */
+      #zoomBtn {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        z-index: 1000;
+        background: rgba(0, 200, 255, 0.08);
+        color: var(--cyan);
+        border: 1px solid var(--cyan-border);
+        padding: 8px 16px;
+        font-family: var(--mono);
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        cursor: pointer;
+        clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+        transition: background 0.2s;
+      }
+
+      #zoomBtn:hover {
+        background: rgba(0, 200, 255, 0.18);
+      }
+      #zoomBtn:active {
+        transform: scale(0.95);
+      }
+      #laserBtn {
+        position: fixed;
+        top: 115px;
+        right: 20px;
+        z-index: 1000;
+        background: rgba(0, 200, 255, 0.08);
+        color: var(--cyan);
+        border: 1px solid var(--cyan-border);
+        padding: 8px 16px;
+        font-family: var(--mono);
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        cursor: pointer;
+        clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+        transition: background 0.2s;
+      }
+      #laserBtn:hover {
+        background: rgba(0, 200, 255, 0.18);
+      }
+      #laserBtn:active {
+        transform: scale(0.95);
+      }
+
+      /* BOTTOM HUD */
+      .hud-bottom {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 940;
+        padding: 0.5rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3rem;
+        background: linear-gradient(0deg, rgba(2, 10, 18, 0.9) 0%, transparent 100%);
+        border-top: 1px solid var(--cyan-border);
+        pointer-events: none;
+      }
+
+      .bottom-item {
+        font-family: var(--mono);
+        font-size: 0.5rem;
+        color: rgba(0, 200, 255, 0.3);
+        letter-spacing: 0.15em;
+        text-align: center;
+      }
+
+      .bottom-item span {
+        display: block;
+        font-size: 0.65rem;
+        color: rgba(0, 200, 255, 0.6);
+        margin-top: 0.1rem;
+      }
+
+      /* GAMEPAD STATUS — petit indicateur en haut à gauche du HUD */
+      .gp-status {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.15rem;
+        margin-left: 1rem;
+      }
+      .gp-status .status-val.off {
+        color: rgba(0, 200, 255, 0.3);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+
+    <header class="hud-header">
+      <div class="hud-logo">
+        <div class="hud-hex"></div>
+        <div>
+          <div class="hud-title">A.R.E.S</div>
+          <div class="hud-subtitle">Autonomous Remote Engagement System</div>
+        </div>
+        <div class="gp-status">
+          <div class="status-label">MANETTE</div>
+          <div class="status-val off" id="gp-status-val">OFFLINE</div>
+        </div>
+      </div>
+      <div class="hud-center">
+        <div class="hud-mode">⬡ MODE COMBAT ACTIF ⬡</div>
+        <div class="hud-status-bar">
+          <div class="status-item">
+            <div class="status-label">SYSTÈME</div>
+            <div class="status-val ok">NOMINAL</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">CAMÉRA</div>
+            <div class="status-val ok">ONLINE</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">TOURELLE</div>
+            <div class="status-val ok">ARMÉE</div>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 1rem">
+        <div class="status-item">
+          <div class="status-label">HEURE</div>
+          <div class="hud-clock" id="clock">--:--:--</div>
+        </div>
+      </div>
+    </header>
+
+    <section class="main">
+      <div id="content">
+        <figure>
+          <div id="stream-container" class="image-container">
+            <img id="stream" crossorigin="anonymous" src="http://arescam.local:81/stream" />
+            <canvas id="tracking-overlay"></canvas>
+          </div>
+        </figure>
+      </div>
+    </section>
+
+    <div id="track-panel" role="group" aria-label="Suivi vidéo">
+      <span id="track-status" aria-live="polite">Sélectionne une zone</span>
+      <button id="track-select" type="button">SÉLECTION</button>
+      <button id="track-start" type="button">SUIVRE</button>
+      <button id="track-stop" type="button">ARRÊT</button>
+    </div>
+
+    <div class="crosshair">
+      <div class="crosshair-ring"></div>
+      <div class="crosshair-ring-inner"></div>
+      <div class="line top"></div>
+      <div class="line bottom"></div>
+      <div class="line left"></div>
+      <div class="line right"></div>
+      <div class="tick t1"></div>
+      <div class="tick t2"></div>
+      <div class="tick t3"></div>
+      <div class="tick t4"></div>
+      <div class="center-dot"></div>
+    </div>
+
+    <div class="side-panel left">
+      <div class="data-row">
+        <div class="data-key">PAN</div>
+        <div class="data-val" id="pan-val">000°</div>
+      </div>
+      <div class="data-row">
+        <div class="data-key">TILT</div>
+        <div class="data-val" id="tilt-val">000°</div>
+      </div>
+      <div class="data-row">
+        <div class="data-key">ZOOM</div>
+        <div class="data-val" id="zoom-val">x1.0</div>
+      </div>
+    </div>
+
+    <div class="joystick chassis-joystick">
+      <button id="chassis-up" class="up">▲</button>
+      <button id="chassis-left" class="left">◀</button>
+      <div class="center">●</div>
+      <button id="chassis-right" class="right">▶</button>
+      <button id="chassis-down" class="down">▼</button>
+    </div>
+    <div class="strafe-cmd">
+      <button id="strafe-left" class="strafe_l">◀◀◀</button>
+      <button id="strafe-right" class="strafe_r">▶▶▶</button>
+    </div>
+
+    <div class="joystick turret-joystick">
+      <button id="tilt-up" class="up">▲</button>
+      <button id="pan-left" class="left">◀</button>
+      <div class="center">●</div>
+      <button id="pan-right" class="right">▶</button>
+      <button id="tilt-down" class="down">▼</button>
+    </div>
+
+    <button id="fire">FIRE</button>
+    <button id="zoomBtn">X1</button>
+    <button id="laserBtn">LASER OFF</button>
+    <div class="hud-bottom">
+      <div class="bottom-item">MODE<span>MANUEL</span></div>
+      <div class="bottom-item">CIBLE<span id="target-coord">--- / ---</span></div>
+      <div class="bottom-item">TIRS<span id="fire-count">0</span></div>
+      <div class="bottom-item">ÉTAT<span style="color: var(--green)">PRÊT</span></div>
+    </div>
+
+    <script>
+      /* ============================================================
+      HORLOGE + HUD
+      ============================================================ */
+      function updateClock() {
+        document.getElementById("clock").textContent = new Date().toLocaleTimeString("fr-FR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      }
+      setInterval(updateClock, 1000);
+      updateClock();
+
+      /* ============================================================
+      INITIALISATION INTERFACE
+      ============================================================ */
+      document.addEventListener("DOMContentLoaded", function () {
+        var fireCount = 0;
+
+        /* ============================================================
+        OUTILS / HELPERS
+        ============================================================ */
+        function fetchUrl(url) {
+          fetch(url).catch((err) => console.error(err));
+        }
+
+        const view = document.getElementById("stream");
+
+        // Suivi local d'une zone sélectionnée : appariement de patchs en niveaux de gris.
+        // Le suivi s'arrête dès que la correspondance devient incertaine.
+        const streamContainer = document.getElementById("stream-container");
+        const overlay = document.getElementById("tracking-overlay");
+        const overlayCtx = overlay.getContext("2d");
+        const frameCanvas = document.createElement("canvas");
+        frameCanvas.width = 160;
+        frameCanvas.height = 120;
+        const frameCtx = frameCanvas.getContext("2d", { willReadFrequently: true });
+        const trackStatus = document.getElementById("track-status");
+        const selectTrackButton = document.getElementById("track-select");
+        const startTrackButton = document.getElementById("track-start");
+        const stopTrackButton = document.getElementById("track-stop");
+        const TRACK_DEAD_BAND = 0.09;
+        const TRACK_CONFIDENCE_MIN = 0.66;
+        const TRACK_LOSS_FRAMES = 2;
+        let selectedBox = null;
+        let patch = null;
+        let patchSize = 15;
+        let tracking = false;
+        let selecting = false;
+        let selectionStart = null;
+        let lastPan = 0;
+        let lastTilt = 0;
+        let weakFrames = 0;
+        let lastTrackFrame = 0;
+
+        function fitOverlay() {
+          const rect = streamContainer.getBoundingClientRect();
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          overlay.width = Math.max(1, Math.round(rect.width * dpr));
+          overlay.height = Math.max(1, Math.round(rect.height * dpr));
+          overlayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          drawTrackingOverlay();
+        }
+
+        function coverMetrics() {
+          const rect = streamContainer.getBoundingClientRect();
+          const iw = view.naturalWidth || 640;
+          const ih = view.naturalHeight || 480;
+          const scale = Math.max(rect.width / iw, rect.height / ih);
+          return { rect, iw, ih, scale,
+            cropX: (iw * scale - rect.width) / 2,
+            cropY: (ih * scale - rect.height) / 2 };
+        }
+
+        function pointerToFrame(event) {
+          const m = coverMetrics();
+          const x = (event.clientX - m.rect.left + m.cropX) / m.scale / m.iw * frameCanvas.width;
+          const y = (event.clientY - m.rect.top + m.cropY) / m.scale / m.ih * frameCanvas.height;
+          return { x: Math.max(0, Math.min(frameCanvas.width - 1, x)),
+            y: Math.max(0, Math.min(frameCanvas.height - 1, y)) };
+        }
+
+        function frameToOverlay(x, y) {
+          const m = coverMetrics();
+          return { x: x / frameCanvas.width * m.iw * m.scale - m.cropX,
+            y: y / frameCanvas.height * m.ih * m.scale - m.cropY };
+        }
+
+        function grayFrame() {
+          if (!view.complete || !view.naturalWidth) throw new Error("Flux caméra indisponible");
+          frameCtx.drawImage(view, 0, 0, frameCanvas.width, frameCanvas.height);
+          const rgba = frameCtx.getImageData(0, 0, frameCanvas.width, frameCanvas.height).data;
+          const gray = new Uint8Array(frameCanvas.width * frameCanvas.height);
+          for (let i = 0, p = 0; i < rgba.length; i += 4, p++)
+            gray[p] = (rgba[i] * 77 + rgba[i + 1] * 150 + rgba[i + 2] * 29) >> 8;
+          return gray;
+        }
+
+        function makePatch(gray, cx, cy) {
+          const half = Math.floor(patchSize / 2);
+          const values = new Float32Array(patchSize * patchSize);
+          let mean = 0;
+          for (let py = -half, i = 0; py <= half; py++) {
+            for (let px = -half; px <= half; px++, i++) {
+              values[i] = gray[(cy + py) * frameCanvas.width + cx + px];
+              mean += values[i];
+            }
+          }
+          mean /= values.length;
+          let energy = 0;
+          for (let i = 0; i < values.length; i++) {
+            values[i] -= mean;
+            energy += values[i] * values[i];
+          }
+          return energy < 80 ? null : { values, norm: Math.sqrt(energy) };
+        }
+
+        function matchPatch(gray, cx, cy, radius) {
+          const half = Math.floor(patchSize / 2);
+          let best = { score: -1, x: cx, y: cy }, second = -1;
+          for (let y = Math.max(half, cy - radius); y <= Math.min(frameCanvas.height - half - 1, cy + radius); y += 2) {
+            for (let x = Math.max(half, cx - radius); x <= Math.min(frameCanvas.width - half - 1, cx + radius); x += 2) {
+              let mean = 0, i = 0;
+              for (let py = -half; py <= half; py++)
+                for (let px = -half; px <= half; px++) mean += gray[(y + py) * frameCanvas.width + x + px];
+              mean /= patch.values.length;
+              let dot = 0, energy = 0;
+              for (let py = -half; py <= half; py++) {
+                for (let px = -half; px <= half; px++, i++) {
+                  const delta = gray[(y + py) * frameCanvas.width + x + px] - mean;
+                  dot += patch.values[i] * delta;
+                  energy += delta * delta;
+                }
+              }
+              const score = energy > 80 ? dot / (patch.norm * Math.sqrt(energy)) : -1;
+              if (score > best.score) { second = best.score; best = { score, x, y }; }
+              else if (score > second) second = score;
+            }
+          }
+          best.margin = best.score - Math.max(second, 0);
+          return best;
+        }
+
+        function drawTrackingOverlay() {
+          const rect = streamContainer.getBoundingClientRect();
+          overlayCtx.clearRect(0, 0, rect.width, rect.height);
+          if (!selectedBox) return;
+          const topLeft = frameToOverlay(selectedBox.x, selectedBox.y);
+          const bottomRight = frameToOverlay(selectedBox.x + selectedBox.w, selectedBox.y + selectedBox.h);
+          overlayCtx.strokeStyle = tracking ? "#00ff88" : "#00c8ff";
+          overlayCtx.lineWidth = 2;
+          overlayCtx.setLineDash(tracking ? [] : [7, 5]);
+          overlayCtx.strokeRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+          const center = frameToOverlay(selectedBox.x + selectedBox.w / 2, selectedBox.y + selectedBox.h / 2);
+          overlayCtx.beginPath();
+          overlayCtx.arc(center.x, center.y, 5, 0, Math.PI * 2);
+          overlayCtx.fillStyle = tracking ? "#00ff88" : "#00c8ff";
+          overlayCtx.fill();
+        }
+
+        function sendTrackAxis(axis, value) {
+          if (axis === "pan" && value === lastPan) return;
+          if (axis === "tilt" && value === lastTilt) return;
+          if (axis === "pan") lastPan = value; else lastTilt = value;
+          fetchUrl(`/control?var=${axis}&val=${value}`);
+        }
+
+        function stopTracking(reason = "Suivi arrêté") {
+          tracking = false;
+          selecting = false;
+          selectionStart = null;
+          sendTrackAxis("pan", 0);
+          sendTrackAxis("tilt", 0);
+          if (reason) trackStatus.textContent = reason;
+          drawTrackingOverlay();
+        }
+
+        function selectAt(point) {
+          patch = null;
+          selectedBox = null;
+          try {
+            const gray = grayFrame();
+            const cx = Math.max(8, Math.min(frameCanvas.width - 9, Math.round(point.x)));
+            const cy = Math.max(8, Math.min(frameCanvas.height - 9, Math.round(point.y)));
+            patch = makePatch(gray, cx, cy);
+            if (!patch) { trackStatus.textContent = "Choisis une zone texturée"; return; }
+            selectedBox = { x: cx - 9, y: cy - 9, w: 18, h: 18 };
+            trackStatus.textContent = "Zone sélectionnée";
+            drawTrackingOverlay();
+          } catch (error) {
+            trackStatus.textContent = "Flux inaccessible (CORS ?)";
+            console.error(error);
+          }
+        }
+
+        streamContainer.addEventListener("pointerdown", (event) => {
+          if (!selecting || tracking) return;
+          event.preventDefault();
+          selectionStart = pointerToFrame(event);
+          streamContainer.setPointerCapture(event.pointerId);
+        });
+        streamContainer.addEventListener("pointerup", (event) => {
+          if (!selecting || !selectionStart || tracking) return;
+          const end = pointerToFrame(event);
+          const dx = Math.abs(end.x - selectionStart.x);
+          const dy = Math.abs(end.y - selectionStart.y);
+          const center = { x: (end.x + selectionStart.x) / 2, y: (end.y + selectionStart.y) / 2 };
+          selectAt(center);
+          if (selectedBox) {
+            selectedBox = { x: Math.max(0, Math.min(frameCanvas.width - 18, center.x - Math.max(9, dx / 2))),
+              y: Math.max(0, Math.min(frameCanvas.height - 18, center.y - Math.max(9, dy / 2))),
+              w: Math.max(18, dx), h: Math.max(18, dy) };
+            trackStatus.textContent = "Zone sélectionnée · SUIVRE pour démarrer";
+            drawTrackingOverlay();
+          }
+          selectionStart = null;
+          selecting = false;
+        });
+        selectTrackButton.addEventListener("click", () => {
+          stopTracking("Clique sur l'objet dans l'image");
+          selecting = true;
+        });
+        startTrackButton.addEventListener("click", () => {
+          if (!patch || !selectedBox) { trackStatus.textContent = "Sélectionne d'abord l'objet"; return; }
+          tracking = true;
+          weakFrames = 0;
+          lastTrackFrame = 0;
+          trackStatus.textContent = "Suivi actif";
+          requestAnimationFrame(trackFrame);
+        });
+        stopTrackButton.addEventListener("click", () => stopTracking("Suivi arrêté"));
+        window.addEventListener("resize", fitOverlay);
+        view.addEventListener("load", fitOverlay);
+        window.addEventListener("blur", () => { if (tracking) stopTracking("Fenêtre inactive — arrêt"); });
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden && tracking) stopTracking("Page masquée — arrêt");
+        });
+        window.addEventListener("pagehide", () => {
+          fetch("/control?var=pan&val=0", { keepalive: true }).catch(() => {});
+          fetch("/control?var=tilt&val=0", { keepalive: true }).catch(() => {});
+        });
+
+        function trackFrame(timestamp) {
+          if (!tracking || timestamp - lastTrackFrame < 100) {
+            if (tracking) requestAnimationFrame(trackFrame);
+            return;
+          }
+          lastTrackFrame = timestamp;
+          try {
+            const gray = grayFrame();
+            const cx = Math.round(selectedBox.x + selectedBox.w / 2);
+            const cy = Math.round(selectedBox.y + selectedBox.h / 2);
+            const match = matchPatch(gray, cx, cy, 15);
+            if (match.score < TRACK_CONFIDENCE_MIN) {
+              weakFrames++;
+              sendTrackAxis("pan", 0);
+              sendTrackAxis("tilt", 0);
+              if (weakFrames >= TRACK_LOSS_FRAMES) { stopTracking("Cible perdue — moteurs arrêtés"); return; }
+            } else {
+              weakFrames = 0;
+              selectedBox.x = match.x - selectedBox.w / 2;
+              selectedBox.y = match.y - selectedBox.h / 2;
+              const ex = (match.x - frameCanvas.width / 2) / (frameCanvas.width / 2);
+              const ey = (match.y - frameCanvas.height / 2) / (frameCanvas.height / 2);
+              const pan = Math.abs(ex) <= TRACK_DEAD_BAND ? 0 : (ex > 0 ? 1 : -1);
+              const tilt = Math.abs(ey) <= TRACK_DEAD_BAND ? 0 : (ey < 0 ? 1 : -1);
+              sendTrackAxis("pan", pan);
+              sendTrackAxis("tilt", tilt);
+              trackStatus.textContent = `Suivi actif · ${(match.score * 100).toFixed(0)}%`;
+            }
+            drawTrackingOverlay();
+          } catch (error) {
+            stopTracking("Erreur d'image — moteurs arrêtés");
+            console.error(error);
+            return;
+          }
+          if (tracking) requestAnimationFrame(trackFrame);
+        }
+        fitOverlay();
+
+        function bindControl(button, startCommand, stopCommand, onStart) {
+          button.addEventListener("pointerdown", (e) => {
+            e.preventDefault();
+            if (onStart) onStart();
+            fetchUrl(startCommand);
+          });
+          const stopHandler = (e) => {
+            e.preventDefault();
+            fetchUrl(stopCommand);
+          };
+          button.addEventListener("pointerup", stopHandler);
+          button.addEventListener("pointerleave", stopHandler);
+          button.addEventListener("pointercancel", stopHandler);
+        }
+
+        /* ============================================================
+        CONTROLES TOURELLE
+        - pan
+        - tilt
+        ============================================================ */
+        const panLeft = document.getElementById("pan-left");
+        bindControl(panLeft, "/control?var=pan&val=-1", "/control?var=pan&val=0", () => stopTracking("Commande manuelle"));
+
+        const panRight = document.getElementById("pan-right");
+        bindControl(panRight, "/control?var=pan&val=1", "/control?var=pan&val=0", () => stopTracking("Commande manuelle"));
+
+        const tiltUp = document.getElementById("tilt-up");
+        bindControl(tiltUp, "/control?var=tilt&val=1", "/control?var=tilt&val=0", () => stopTracking("Commande manuelle"));
+
+        const tiltDown = document.getElementById("tilt-down");
+        bindControl(tiltDown, "/control?var=tilt&val=-1", "/control?var=tilt&val=0", () => stopTracking("Commande manuelle"));
+
+        /* ============================================================
+        CONTROLES CHASSIS
+
+        ============================================================ */
+        const chassisUp = document.getElementById("chassis-up");
+        bindControl(chassisUp, "http://areschassis.local/control?cmd=forward", "http://areschassis.local/control?cmd=stop");
+
+        const chassisLeft = document.getElementById("chassis-left");
+        bindControl(chassisLeft, "http://areschassis.local/control?cmd=rotate_left", "http://areschassis.local/control?cmd=stop");
+
+        const chassisRight = document.getElementById("chassis-right");
+        bindControl(chassisRight, "http://areschassis.local/control?cmd=rotate_right", "http://areschassis.local/control?cmd=stop");
+
+        const chassisDown = document.getElementById("chassis-down");
+        bindControl(chassisDown, "http://areschassis.local/control?cmd=backward", "http://areschassis.local/control?cmd=stop");
+
+        const chassisStrafeRight = document.getElementById("strafe-right");
+        bindControl(chassisStrafeRight, "http://areschassis.local/control?cmd=strafe_right", "http://areschassis.local/control?cmd=stop");
+
+        const chassisStrafeLeft = document.getElementById("strafe-left");
+        bindControl(chassisStrafeLeft, "http://areschassis.local/control?cmd=strafe_left", "http://areschassis.local/control?cmd=stop");
+        /* ============================================================
+        ARMEMENT / SYSTEMES
+        - fire
+        - zoom
+        - laser
+        ============================================================ */
+        const fire = document.getElementById("fire");
+        fire.onclick = () => {
+          fetchUrl("/control?var=Fire&val=1");
+          fireCount++;
+          document.getElementById("fire-count").textContent = fireCount;
+          document.body.style.boxShadow = "inset 0 0 100px rgba(255,48,52,0.3)";
+          setTimeout(() => (document.body.style.boxShadow = ""), 200);
+        };
+
+        const zoomBtn = document.getElementById("zoomBtn");
+        let zoomLevel = 1;
+        zoomBtn.onclick = () => {
+          if (zoomLevel === 1) {
+            document.body.classList.add("zoom-x2");
+            zoomLevel = 2;
+            zoomBtn.textContent = "X2";
+            document.getElementById("zoom-val").textContent = "x2.0";
+          } else {
+            document.body.classList.remove("zoom-x2");
+            zoomLevel = 1;
+            zoomBtn.textContent = "X1";
+            document.getElementById("zoom-val").textContent = "x1.0";
+          }
+        };
+        const laserBtn = document.getElementById("laserBtn");
+        let laserLevel = 1;
+        laserBtn.onclick = () => {
+          if (laserLevel === 1) {
+            laserLevel = 2;
+            laserBtn.textContent = "LASER ON";
+            fetchUrl("/control?var=laser&val=1");
+          } else {
+            laserLevel = 1;
+            laserBtn.textContent = "LASER OFF";
+            fetchUrl("/control?var=laser&val=0");
+          }
+        };
+
+        /* ============================================================
+        CONTROLES CLAVIER
+        ============================================================ */
+        document.addEventListener("keydown", (e) => {
+          if (e.repeat) return;
+          switch (e.key) {
+            case "ArrowLeft":
+              fetchUrl("/control?var=pan&val=-1");
+              break;
+            case "ArrowRight":
+              fetchUrl("/control?var=pan&val=1");
+              break;
+            case "ArrowUp":
+              fetchUrl("/control?var=tilt&val=1");
+              break;
+            case "ArrowDown":
+              fetchUrl("/control?var=tilt&val=-1");
+              break;
+            case " ":
+            case "Spacebar":
+              fire.click();
+              break;
+          }
+        });
+
+        document.addEventListener("keyup", (e) => {
+          switch (e.key) {
+            case "ArrowLeft":
+            case "ArrowRight":
+              fetchUrl("/control?var=pan&val=0");
+              break;
+            case "ArrowUp":
+            case "ArrowDown":
+              fetchUrl("/control?var=tilt&val=0");
+              break;
+          }
+        });
+
+        /* ============================================================
+        GAMEPAD SUPPORT (Xbox / Standard mapping)
+        ------------------------------------------------------------
+        Mapping retenu :
+          - D-pad UP    (button 12) -> tilt +1
+          - D-pad DOWN  (button 13) -> tilt -1
+          - D-pad LEFT  (button 14) -> pan  -1
+          - D-pad RIGHT (button 15) -> pan  +1
+          - Stick gauche axes 0/1   -> chassis control (avec deadzone)
+          - Stick droit axes 2/3    -> turret control (avec deadzone)
+          - A           (button 0)  -> FIRE  (front montant uniquement)
+          - RT          (button 7)  -> FIRE  (front montant uniquement)
+          - LT          (button 6)  -> ZOOM maintenu (pressé = x2, relâché = x1)
+          - LB          (button 4)  -> Strafe-left
+          - RB          (button 5)  -> Strafe-right
+        ============================================================ */
+
+        const DEADZONE = 0.25; // seuil en deçà duquel le stick est ignoré
+        const STICK_THRESHOLD = 0.5; // seuil au-delà duquel on considère "poussé à fond"
+
+        // Etat précédent pour détecter les transitions
+        const prevState = {
+          chassisX: 0, // -1, 0, 1
+          chassisY: 0,
+          turretPan: 0,
+          turretTilt: 0,
+          fire: false,
+          zoom: false,
+          strafeLeft: false,
+          strafeRight: false,
+        };
+
+        const gpStatusEl = document.getElementById("gp-status-val");
+
+        // Affichage visuel : surligne les boutons à l'écran quand la manette les active
+        function setBtnActive(el, active) {
+          if (!el) return;
+          if (active) el.classList.add("gp-active");
+          else el.classList.remove("gp-active");
+        }
+
+        // Lit la manette connectée (la première qu'on trouve)
+        function getGamepad() {
+          const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+          for (const pad of pads) {
+            if (pad && pad.connected) return pad;
+          }
+          return null;
+        }
+
+        // Boucle de polling
+        function pollGamepad() {
+          const pad = getGamepad();
+
+          if (!pad) {
+            gpStatusEl.textContent = "OFFLINE";
+            gpStatusEl.classList.remove("ok");
+            gpStatusEl.classList.add("off");
+            requestAnimationFrame(pollGamepad);
+            return;
+          }
+
+          gpStatusEl.textContent = "ONLINE";
+          gpStatusEl.classList.remove("off");
+          gpStatusEl.classList.add("ok");
+
+          /* ----------------------------
+          CHASSIS
+          Stick gauche
+          ---------------------------- */
+          // ---- CHASSIS control : left stick axes 0 (X), 1 (Y)
+          let chassisX = 0;
+          let chassisY = 0;
+          const leftX = pad.axes[0] || 0;
+          const leftY = pad.axes[1] || 0;
+          chassisX = Math.abs(leftX) > DEADZONE ? (leftX > 0 ? 1 : -1) : 0;
+          chassisY = Math.abs(leftY) > DEADZONE ? (leftY < 0 ? 1 : -1) : 0;
+          if (chassisX !== prevState.chassisX) {
+            if (chassisX === 1) {
+              fetchUrl("http://areschassis.local/control?cmd=rotate_right");
+            } else if (chassisX === -1) {
+              fetchUrl("http://areschassis.local/control?cmd=rotate_left");
+            } else {
+              fetchUrl("http://areschassis.local/control?cmd=stop");
+            }
+            prevState.chassisX = chassisX;
+            // feedback visuel for chassis left/right buttons
+            setBtnActive(chassisLeft, chassisX === -1);
+            setBtnActive(chassisRight, chassisX === 1);
+          }
+          if (chassisY !== prevState.chassisY) {
+            if (chassisY === 1) {
+              fetchUrl("http://areschassis.local/control?cmd=forward");
+            } else if (chassisY === -1) {
+              fetchUrl("http://areschassis.local/control?cmd=backward");
+            } else {
+              fetchUrl("http://areschassis.local/control?cmd=stop");
+            }
+            prevState.chassisY = chassisY;
+            // feedback visuel for chassis up/down buttons
+            setBtnActive(chassisUp, chassisY === 1);
+            setBtnActive(chassisDown, chassisY === -1);
+          }
+          //Strafe-left
+
+          const lbPressed = pad.buttons[4] && pad.buttons[4].pressed;
+          if (lbPressed && !prevState.strafeLeft) {
+            // Front montant -> strafe gauche
+
+            fetchUrl("http://areschassis.local/control?cmd=strafe_left");
+          } else if (!lbPressed && prevState.strafeLeft) {
+            // Front descendant -> stop
+            fetchUrl("http://areschassis.local/control?cmd=stop");
+          }
+          prevState.strafeLeft = lbPressed;
+
+          //Strafe-Right
+
+          const rbPressed = pad.buttons[5] && pad.buttons[5].pressed;
+          if (rbPressed && !prevState.strafeRight) {
+            // Front montant -> strafe droit
+
+            fetchUrl("http://areschassis.local/control?cmd=strafe_right");
+          } else if (!rbPressed && prevState.strafeRight) {
+            // Front descendant -> stop
+            fetchUrl("http://areschassis.local/control?cmd=stop");
+          }
+          prevState.strafeRight = rbPressed;
+
+          /* ----------------------------
+          TOURELLE
+          Stick droit
+          ---------------------------- */
+          // ---- TURRET control : right stick axes 2 (X), 3 (Y)
+          let turretPan = 0;
+          let turretTilt = 0;
+          const rightX = pad.axes[2] || 0;
+          const rightY = pad.axes[3] || 0;
+          turretPan = Math.abs(rightX) > DEADZONE ? (rightX > 0 ? 1 : -1) : 0;
+          turretTilt = Math.abs(rightY) > DEADZONE ? (rightY > 0 ? -1 : 1) : 0; // Y axis inverted for tilt
+
+          if (turretPan !== prevState.turretPan) {
+            if (tracking) stopTracking("Commande manuelle");
+            fetchUrl("/control?var=pan&val=" + turretPan);
+            prevState.turretPan = turretPan;
+            setBtnActive(panLeft, turretPan === -1);
+            setBtnActive(panRight, turretPan === 1);
+          }
+
+          if (turretTilt !== prevState.turretTilt) {
+            if (tracking) stopTracking("Commande manuelle");
+            fetchUrl("/control?var=tilt&val=" + turretTilt);
+            prevState.turretTilt = turretTilt;
+            setBtnActive(tiltUp, turretTilt === 1);
+            setBtnActive(tiltDown, turretTilt === -1);
+          }
+
+          /* ----------------------------
+          ARMEMENT
+          FIRE + ZOOM
+          ---------------------------- */
+          // ---- FIRE : front montant uniquement (A=0 ou RT=7)
+          const fireBtn = (pad.buttons[0] && pad.buttons[0].pressed) || (pad.buttons[7] && pad.buttons[7].pressed);
+          if (fireBtn && !prevState.fire) {
+            fire.click();
+          }
+          prevState.fire = fireBtn;
+          setBtnActive(fire, fireBtn);
+
+          // ---- ZOOM : maintenu = x2, relâché = x1 (LT = bouton 6)
+          // On force l'état du zoom selon la pression, sans utiliser zoomBtn.click()
+          // qui ferait un toggle (et inverserait donc le comportement).
+          const ltPressed = pad.buttons[6] && pad.buttons[6].pressed;
+          if (ltPressed && !prevState.zoom) {
+            // Front montant -> on zoome
+            document.body.classList.add("zoom-x2");
+            zoomLevel = 2;
+            zoomBtn.textContent = "X2";
+            document.getElementById("zoom-val").textContent = "x2.0";
+          } else if (!ltPressed && prevState.zoom) {
+            // Front descendant -> on dézoome
+            document.body.classList.remove("zoom-x2");
+            zoomLevel = 1;
+            zoomBtn.textContent = "X1";
+            document.getElementById("zoom-val").textContent = "x1.0";
+          }
+          prevState.zoom = ltPressed;
+
+          requestAnimationFrame(pollGamepad);
+        }
+
+        // Démarre la boucle dès qu'une manette est branchée
+        window.addEventListener("gamepadconnected", (e) => {
+          console.log("Manette connectée :", e.gamepad.id, "mapping:", e.gamepad.mapping);
+        });
+
+        window.addEventListener("gamepaddisconnected", (e) => {
+          console.log("Manette déconnectée :", e.gamepad.id);
+          // Sécurité : si on était en train de bouger, on stoppe la tourelle et chassis
+          if (prevState.turretPan !== 0) {
+            fetchUrl("/control?var=pan&val=0");
+            prevState.turretPan = 0;
+          }
+          if (prevState.turretTilt !== 0) {
+            fetchUrl("/control?var=tilt&val=0");
+            prevState.turretTilt = 0;
+          }
+          if (prevState.chassisX !== 0) {
+            fetchUrl("http://areschassis.local/control?cmd=stop");
+            prevState.chassisX = 0;
+          }
+          if (prevState.chassisY !== 0) {
+            fetchUrl("http://areschassis.local/control?cmd=stop");
+            prevState.chassisY = 0;
+          }
+          if (prevState.strafeLeft) {
+            fetchUrl("http://areschassis.local/control?cmd=stop");
+            prevState.strafeLeft = false;
+          }
+          if (prevState.strafeRight) {
+            fetchUrl("http://areschassis.local/control?cmd=stop");
+            prevState.strafeRight = false;
+          }
+        });
+
+        // On lance la boucle dans tous les cas : Safari notamment ne déclenche
+        // gamepadconnected qu'après une première interaction utilisateur,
+        // donc le polling permanent est plus fiable.
+        requestAnimationFrame(pollGamepad);
+      });
+    </script>
+  </body>
+</html>

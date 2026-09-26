@@ -2,6 +2,8 @@
 
 namespace config
 {
+    constexpr int PIN_SDA = 13;
+    constexpr int PIN_SCL = 14;
     constexpr int PIN_MOTOR_ELEV_STEP = 32;
     constexpr int PIN_MOTOR_ELEV_DIR = 8;
     constexpr int PIN_MOTOR_ELEV_EN = 9;
@@ -11,12 +13,7 @@ namespace config
     constexpr int PIN_MOTOR_FIRE_STEP = 12;
     constexpr int PIN_MOTOR_FIRE_DIR = 12;
     constexpr int PIN_MOTOR_FIRE_EN = 13;
-    constexpr int PIN_BTN_FIRE = 7;
-    constexpr int PIN_BTN_UP = 6;
-    constexpr int PIN_BTN_DOWN = 5;
-    constexpr int PIN_BTN_LEFT = 4;
-    constexpr int PIN_BTN_RIGHT = 3;
-    constexpr int PIN_INTER_REMOTE = 1;
+
     constexpr int PIN_LASER = 23;
     constexpr const char *WIFI_SSID = "ARES";
     constexpr const char *WIFI_PASSWORD = "12345678";

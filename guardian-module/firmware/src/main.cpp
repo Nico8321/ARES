@@ -38,12 +38,7 @@ Adafruit_MCP23X17 mcp;
 Motor motorElevation(config::PIN_MOTOR_ELEV_STEP, config::PIN_MOTOR_ELEV_DIR, config::PIN_MOTOR_ELEV_EN);
 Motor motorCirculaire(config::PIN_MOTOR_CIRC_STEP, config::PIN_MOTOR_CIRC_DIR, config::PIN_MOTOR_CIRC_EN);
 Motor motorFire(config::PIN_MOTOR_FIRE_STEP, config::PIN_MOTOR_FIRE_DIR, config::PIN_MOTOR_FIRE_EN);
-Button btnFire(config::PIN_BTN_FIRE);
-Button btnUp(config::PIN_BTN_UP);
-Button btnDown(config::PIN_BTN_DOWN);
-Button btnLeft(config::PIN_BTN_LEFT);
-Button btnRight(config::PIN_BTN_RIGHT);
-Inter interRemote(config::PIN_INTER_REMOTE);
+
 Laser laser(config::PIN_LASER);
 bool lastButtonState = false;
 
@@ -57,7 +52,7 @@ void startCameraServer();
 void setup()
 {
   Serial.begin(115200);
-  Wire.begin(13, 14);
+  Wire.begin(config::PIN_SDA, config::PIN_SCL);
   mcp.begin_I2C(0x20);
   Serial.setDebugOutput(true);
   Serial.println();
@@ -84,13 +79,7 @@ void setup()
   Serial.println("' to connect");
 
   // Initialisation du matériel de contrôle
-  // boutons physiques + moteurs
-  btnUp.init();
-  btnDown.init();
-  btnLeft.init();
-  btnRight.init();
-  btnFire.init();
-  interRemote.init();
+
   motorElevation.init();
   motorCirculaire.init();
   motorFire.init();
@@ -98,7 +87,6 @@ void setup()
   motorFire.setStepInterval(config::MOTOR_FIRE_STEP_INTERVAL);
   motorFire.setInvert(true);
   motorElevation.setStepInterval(config::MOTOR_ELEV_STEP_INTERVAL);
-  lastButtonState = btnFire.isPressed();
   laser.init();
 }
 
@@ -114,51 +102,4 @@ void loop()
   motorElevation.update();
   motorCirculaire.update();
   motorFire.update();
-
-  // Si le robot est en mode REMOTE :
-  // les commandes viennent uniquement du serveur HTTP
-  if (interRemote.getMode() == Inter::REMOTE)
-  {
-    // seulement gérer les états
-    // les pas seront générés dans update()
-  }
-  // Mode LOCAL : contrôle avec les boutons physiques
-  else
-  {
-    if (btnUp.isPressed())
-    {
-      if (motorElevation.getState() != Motor::UP)
-        motorElevation.up();
-    }
-    else if (btnDown.isPressed())
-    {
-      if (motorElevation.getState() != Motor::DOWN)
-        motorElevation.down();
-    }
-    else
-    {
-      motorElevation.stop();
-    }
-    if (btnLeft.isPressed())
-    {
-      if (motorCirculaire.getState() != Motor::UP)
-        motorCirculaire.up();
-    }
-    else if (btnRight.isPressed())
-    {
-      if (motorCirculaire.getState() != Motor::DOWN)
-        motorCirculaire.down();
-    }
-    else
-    {
-      motorCirculaire.stop();
-    }
-    // Détection du tir
-    // On détecte le front du bouton (appui unique)
-    bool currentState = btnFire.isPressed();
-    if (currentState && !lastButtonState)
-      motorFire.startFireCycle(config::FIRE_CYCLE);
-
-    lastButtonState = currentState;
-  }
 }
