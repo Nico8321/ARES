@@ -22,4 +22,5 @@ namespace config
     constexpr int FIRE_CYCLE = 1200;
     constexpr unsigned long MOTOR_DEFAULT_STEP_INTERVAL = 6000;
     constexpr int HTTP_PORT = 80;
+    constexpr unsigned long WS_TIMEOUT_MS = 1500; // silence WebSocket max avant arrêt tourelle
 }

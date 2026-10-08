@@ -41,6 +41,7 @@ Laser laser(config::PIN_LASER);
 bool lastButtonState = false;
 
 void startCameraServer();
+void ws_watchdog();
 
 // ---------------------------------------------------------------------------
 // SETUP
@@ -100,4 +101,7 @@ void loop()
   motorElevation.update();
   motorCirculaire.update();
   motorFire.update();
+
+  // Arrêt de la tourelle si la page web ne répond plus
+  ws_watchdog();
 }
