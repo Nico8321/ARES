@@ -76,6 +76,11 @@
         width: 100%;
         height: 100%;
         position: relative;
+        overflow: hidden;
+      }
+
+      .image-container.selecting {
+        cursor: crosshair;
       }
 
       #track-panel {
@@ -94,7 +99,10 @@
         font: 12px var(--mono);
       }
 
-      #track-status { min-width: 135px; color: var(--cyan); }
+      #track-status {
+        min-width: 135px;
+        color: var(--cyan);
+      }
       #track-panel button {
         color: var(--bg);
         background: var(--cyan);
@@ -104,7 +112,9 @@
         font: bold 11px var(--mono);
         cursor: pointer;
       }
-      #track-stop { background: var(--red) !important; }
+      #track-stop {
+        background: var(--red) !important;
+      }
 
       #tracking-overlay {
         position: absolute;
@@ -385,10 +395,6 @@
         left: 0;
         align-items: flex-start;
       }
-      .side-panel.right {
-        right: 0;
-        align-items: flex-end;
-      }
 
       .data-row {
         display: flex;
@@ -410,20 +416,6 @@
         color: var(--cyan);
       }
 
-      .data-bar {
-        width: 80px;
-        height: 2px;
-        background: rgba(0, 200, 255, 0.1);
-        border: 1px solid var(--cyan-border);
-        overflow: hidden;
-      }
-
-      .data-bar-fill {
-        height: 100%;
-        background: var(--cyan);
-        transition: width 0.5s ease;
-      }
-
       /* JOYSTICK */
       .joystick {
         position: fixed;
@@ -435,48 +427,6 @@
         grid-template-columns: repeat(3, 1fr);
         grid-template-rows: repeat(3, 1fr);
         place-items: center;
-      }
-      .strafe-cmd {
-        position: fixed;
-        bottom: 100px;
-        left: 210px;
-        z-index: 1000;
-        display: flex;
-        flex-direction: row;
-        gap: 8px;
-      }
-      .strafe-cmd button {
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
-        border: 1px solid var(--cyan-border);
-        background: rgba(0, 200, 255, 0.08);
-        color: var(--cyan);
-        font-size: 16px;
-        cursor: pointer;
-        font-family: var(--mono);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        transition: background 0.1s;
-      }
-
-      .strafe-cmd button:active,
-      .strafe-cmd button.gp-active {
-        background: rgba(0, 200, 255, 0.25);
-        box-shadow: 0 0 12px rgba(0, 200, 255, 0.35);
-        transform: scale(0.92);
-      }
-       .joystick .strafe-l {
-        top: 30px;
-        left: 10px;
-        font-size: 14px;
-      }
-      .joystick .strafe-r {
-        top: 30px;
-        right: 10px;
-        font-size: 14px;
       }
 
       .chassis-joystick {
@@ -506,7 +456,8 @@
         pointer-events: none;
       }
 
-      .joystick button {
+      .joystick button,
+      .strafe-cmd button {
         width: 44px;
         height: 44px;
         border-radius: 50%;
@@ -525,13 +476,26 @@
         padding: 0;
         margin: 0;
         transition: background 0.1s;
+        touch-action: none;
       }
 
       .joystick button:active,
-      .joystick button.gp-active {
+      .joystick button.gp-active,
+      .strafe-cmd button:active,
+      .strafe-cmd button.gp-active {
         background: rgba(0, 200, 255, 0.25);
         box-shadow: 0 0 12px rgba(0, 200, 255, 0.35);
         transform: scale(0.92);
+      }
+
+      .strafe-cmd {
+        position: fixed;
+        bottom: 100px;
+        left: 210px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
       }
 
       .joystick .center {
@@ -589,34 +553,10 @@
         transform: scale(0.94);
       }
 
-      /* ZOOM */
-      #zoomBtn {
-        position: fixed;
-        top: 80px;
-        right: 20px;
-        z-index: 1000;
-        background: rgba(0, 200, 255, 0.08);
-        color: var(--cyan);
-        border: 1px solid var(--cyan-border);
-        padding: 8px 16px;
-        font-family: var(--mono);
-        font-size: 0.65rem;
-        font-weight: 700;
-        letter-spacing: 0.2em;
-        cursor: pointer;
-        clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
-        transition: background 0.2s;
-      }
-
-      #zoomBtn:hover {
-        background: rgba(0, 200, 255, 0.18);
-      }
-      #zoomBtn:active {
-        transform: scale(0.95);
-      }
+      /* ZOOM + LASER */
+      #zoomBtn,
       #laserBtn {
         position: fixed;
-        top: 115px;
         right: 20px;
         z-index: 1000;
         background: rgba(0, 200, 255, 0.08);
@@ -631,9 +571,17 @@
         clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
         transition: background 0.2s;
       }
+      #zoomBtn {
+        top: 80px;
+      }
+      #laserBtn {
+        top: 115px;
+      }
+      #zoomBtn:hover,
       #laserBtn:hover {
         background: rgba(0, 200, 255, 0.18);
       }
+      #zoomBtn:active,
       #laserBtn:active {
         transform: scale(0.95);
       }
@@ -670,7 +618,7 @@
         margin-top: 0.1rem;
       }
 
-      /* GAMEPAD STATUS — petit indicateur en haut à gauche du HUD */
+      /* GAMEPAD STATUS */
       .gp-status {
         display: flex;
         flex-direction: column;
@@ -710,11 +658,11 @@
           </div>
           <div class="status-item">
             <div class="status-label">CAMÉRA</div>
-            <div class="status-val ok">ONLINE</div>
+            <div class="status-val warn" id="camera-status-val">OFFLINE</div>
           </div>
           <div class="status-item">
             <div class="status-label">TOURELLE</div>
-            <div class="status-val ok">ARMÉE</div>
+            <div class="status-val warn" id="turret-status-val">OFFLINE</div>
           </div>
         </div>
       </div>
@@ -730,7 +678,7 @@
       <div id="content">
         <figure>
           <div id="stream-container" class="image-container">
-            <img id="stream" crossorigin="anonymous" src="http://arescam.local:81/stream" />
+            <img id="stream" alt="" />
             <canvas id="tracking-overlay"></canvas>
           </div>
         </figure>
@@ -781,8 +729,8 @@
       <button id="chassis-down" class="down">▼</button>
     </div>
     <div class="strafe-cmd">
-      <button id="strafe-left" class="strafe_l">◀◀◀</button>
-      <button id="strafe-right" class="strafe_r">▶▶▶</button>
+      <button id="strafe-left">◀◀◀</button>
+      <button id="strafe-right">▶▶▶</button>
     </div>
 
     <div class="joystick turret-joystick">
@@ -805,7 +753,7 @@
 
     <script>
       /* ============================================================
-      HORLOGE + HUD
+      HORLOGE
       ============================================================ */
       function updateClock() {
         document.getElementById("clock").textContent = new Date().toLocaleTimeString("fr-FR", {
@@ -817,23 +765,185 @@
       setInterval(updateClock, 1000);
       updateClock();
 
-      /* ============================================================
-      INITIALISATION INTERFACE
-      ============================================================ */
       document.addEventListener("DOMContentLoaded", function () {
-        var fireCount = 0;
-
         /* ============================================================
-        OUTILS / HELPERS
+        ÉTAT GLOBAL + HELPERS
+        Déclaré en premier : coverMetrics() lit zoomLevel dès le premier
+        fitOverlay(), il doit donc exister avant.
         ============================================================ */
+        const CHASSIS = "http://areschassis.local/control?cmd=";
+        let fireCount = 0;
+        let zoomLevel = 1;
+        let laserOn = false;
+
         function fetchUrl(url) {
           fetch(url).catch((err) => console.error(err));
         }
 
+        /* ============================================================
+        LIAISON TOURELLE (WebSocket /ws)
+        Une seule connexion : les commandes arrivent dans l'ordre d'envoi.
+        Message texte "<var> <val>" (ex. "pan 1"). Un ping toutes les
+        250 ms sert de battement de cœur : si l'ESP32 n'entend plus rien
+        pendant 1,5 s, ou si la connexion se ferme, il arrête la tourelle.
+        ============================================================ */
+        const turret = (() => {
+          const host = location.host || "ares.local"; // page ouverte en local → robot par mDNS
+          const statusEl = document.getElementById("turret-status-val");
+          const listeners = { close: [] };
+          let ws = null;
+          let retryMs = 500;
+          let pingSentAt = 0;
+
+          function setStatus(text, ok) {
+            statusEl.textContent = text;
+            statusEl.classList.toggle("ok", ok);
+            statusEl.classList.toggle("warn", !ok);
+          }
+
+          function connect() {
+            setStatus("CONNEXION…", false);
+            ws = new WebSocket(`ws://${host}/ws`);
+            ws.onopen = () => {
+              retryMs = 500;
+              setStatus("ONLINE", true);
+            };
+            ws.onmessage = (event) => {
+              if (event.data === "pong" && pingSentAt) {
+                setStatus(`${Math.round(performance.now() - pingSentAt)} ms`, true);
+                pingSentAt = 0;
+              }
+            };
+            ws.onclose = () => {
+              setStatus("OFFLINE", false);
+              listeners.close.forEach((fn) => fn());
+              setTimeout(connect, retryMs);
+              retryMs = Math.min(retryMs * 2, 5000);
+            };
+            ws.onerror = () => ws.close();
+          }
+
+          // Renvoie false si la liaison est coupée (commande perdue).
+          function send(variable, value) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+            ws.send(`${variable} ${value}`);
+            return true;
+          }
+
+          // Un seul ping chronométré à la fois ; abandonné après 2 s si le pong se perd.
+          setInterval(() => {
+            const now = performance.now();
+            if (send("ping", 0) && (!pingSentAt || now - pingSentAt > 2000)) pingSentAt = now;
+          }, 250);
+
+          connect();
+
+          return {
+            send,
+            isOpen: () => !!ws && ws.readyState === WebSocket.OPEN,
+            onClose: (fn) => listeners.close.push(fn),
+          };
+        })();
+
         const view = document.getElementById("stream");
 
-        // Suivi local d'une zone sélectionnée : appariement de patchs en niveaux de gris.
-        // Le suivi s'arrête dès que la correspondance devient incertaine.
+        /* ============================================================
+        VIDÉO (WebSocket ws://arescam.local:81/ws)
+        Chaque "next" envoyé = une image JPEG reçue. On garde 2 demandes
+        en vol : assez pour la fluidité, jamais d'images empilées dans le
+        réseau, donc le retard ne peut pas s'accumuler.
+        L'image est affichée dans <img id="stream"> via une URL blob : le
+        zoom, la sélection et le suivi lisent cette balise comme avant, et
+        une URL blob appartient à la page (pas de blocage CORS du canvas).
+        ============================================================ */
+        (() => {
+          const CAM_URL = "ws://arescam.local:81/ws";
+          const IN_FLIGHT = 2;
+          const STALL_MS = 3000; // aucune image depuis 3 s → reconnexion
+          const statusEl = document.getElementById("camera-status-val");
+          let ws = null;
+          let retryMs = 500;
+          let shownUrl = null;
+          let sentAt = []; // instants des demandes en vol, dans l'ordre
+          let lastFrameAt = 0;
+          let frames = 0;
+          let latency = 0;
+
+          function setStatus(text, ok) {
+            statusEl.textContent = text;
+            statusEl.classList.toggle("ok", ok);
+            statusEl.classList.toggle("warn", !ok);
+          }
+
+          function requestFrame() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            ws.send("next");
+            sentAt.push(performance.now());
+          }
+
+          function connect() {
+            setStatus("CONNEXION…", false);
+            ws = new WebSocket(CAM_URL);
+            ws.binaryType = "blob";
+            ws.onopen = () => {
+              retryMs = 500;
+              sentAt = [];
+              lastFrameAt = performance.now();
+              for (let i = 0; i < IN_FLIGHT; i++) requestFrame();
+            };
+            ws.onmessage = (event) => {
+              if (!(event.data instanceof Blob)) return;
+              const now = performance.now();
+              const t0 = sentAt.shift();
+              if (t0 !== undefined) latency = latency ? 0.8 * latency + 0.2 * (now - t0) : now - t0;
+              lastFrameAt = now;
+              frames++;
+              requestFrame(); // une image reçue → une nouvelle demande
+              const url = URL.createObjectURL(new Blob([event.data], { type: "image/jpeg" }));
+              view.src = url;
+              if (shownUrl) URL.revokeObjectURL(shownUrl);
+              shownUrl = url;
+            };
+            ws.onclose = () => {
+              setStatus("OFFLINE", false);
+              setTimeout(connect, retryMs);
+              retryMs = Math.min(retryMs * 2, 5000);
+            };
+            ws.onerror = () => ws.close();
+          }
+
+          // Compteur images/s + latence (demande → image reçue), et
+          // reconnexion si le flux s'est figé (demande perdue).
+          setInterval(() => {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            if (performance.now() - lastFrameAt > STALL_MS) {
+              ws.close();
+              return;
+            }
+            setStatus(`${frames} IPS · ${Math.round(latency)} ms`, frames > 0);
+            frames = 0;
+          }, 1000);
+
+          connect();
+        })();
+
+        const zoomBtn = document.getElementById("zoomBtn");
+        const zoomVal = document.getElementById("zoom-val");
+
+        function setZoom(level) {
+          zoomLevel = level;
+          document.body.classList.toggle("zoom-x2", level === 2);
+          zoomBtn.textContent = "X" + level;
+          zoomVal.textContent = "x" + level + ".0";
+          drawTrackingOverlay();
+        }
+
+        /* ============================================================
+        SUIVI VIDÉO
+        Appariement d'un patch 15×15 en niveaux de gris (corrélation
+        normalisée) sur une image réduite à 160×120.
+        Le cadre affiché = exactement la zone réellement suivie.
+        ============================================================ */
         const streamContainer = document.getElementById("stream-container");
         const overlay = document.getElementById("tracking-overlay");
         const overlayCtx = overlay.getContext("2d");
@@ -842,22 +952,49 @@
         frameCanvas.height = 120;
         const frameCtx = frameCanvas.getContext("2d", { willReadFrequently: true });
         const trackStatus = document.getElementById("track-status");
-        const selectTrackButton = document.getElementById("track-select");
-        const startTrackButton = document.getElementById("track-start");
-        const stopTrackButton = document.getElementById("track-stop");
-        const TRACK_DEAD_BAND = 0.09;
+        const targetCoord = document.getElementById("target-coord");
+
+        const PATCH_SIZE = 15;
+        const HALF = Math.floor(PATCH_SIZE / 2);
+        const TRACK_DEAD_BAND = 0.08; // erreur normalisée sous laquelle la cible est "centrée"
         const TRACK_CONFIDENCE_MIN = 0.66;
-        const TRACK_LOSS_FRAMES = 2;
-        let selectedBox = null;
+        const TRACK_LOSS_FRAMES = 4; // images faibles consécutives, tourelle à l'arrêt
+        const TRACK_SEARCH_RADIUS = 15;
+        const TRACK_SEARCH_RADIUS_WIDE = 30; // quand la cible a été ratée (flou de bougé)
+        const TRACK_INTERVAL_MS = 100;
+        // Le flux MJPEG a plusieurs centaines de ms de retard : piloter en continu
+        // fait systématiquement dépasser la cible puis osciller. On travaille donc
+        // par impulsions : bouger un temps calculé, s'arrêter, attendre une image
+        // prise APRÈS l'arrêt, mesurer, recommencer.
+        const PULSE_MIN_MS = 40;
+        const PULSE_MAX_MS = 400;
+        const PULSE_FRACTION = 0.7; // on ne vise que 70 % de l'erreur : jamais de dépassement
+        const SETTLE_MS = 450; // latence caméra + réseau après l'arrêt des moteurs
+        const AXIS_SIGN_KEY = "ares.trackAxisSign";
+
+        // sign : sens moteur → image, appris (inversé si la cible s'éloigne après
+        // une impulsion). rate : erreur normalisée corrigée par ms d'impulsion.
+        const axes = {
+          pan: { sign: 1, rate: 1 / 600, wrongWay: 0 },
+          tilt: { sign: 1, rate: 1 / 600, wrongWay: 0 },
+        };
+        try {
+          const saved = JSON.parse(localStorage.getItem(AXIS_SIGN_KEY) || "{}");
+          if (saved.pan === -1) axes.pan.sign = -1;
+          if (saved.tilt === -1) axes.tilt.sign = -1;
+        } catch (e) {}
+
+        let target = null; // centre de la zone suivie, en coordonnées 160×120
         let patch = null;
-        let patchSize = 15;
         let tracking = false;
         let selecting = false;
-        let selectionStart = null;
-        let lastPan = 0;
-        let lastTilt = 0;
         let weakFrames = 0;
         let lastTrackFrame = 0;
+        let stale = false; // dernière recherche ratée → fenêtre de recherche élargie
+        let moving = false; // impulsion en cours
+        let settleUntil = 0; // pas de mesure avant cet instant (performance.now)
+        let lastPulse = null; // { axe: { dir, ms, err } } de la dernière impulsion
+        let generation = 0; // incrémenté à chaque arrêt : invalide les impulsions en vol
 
         function fitOverlay() {
           const rect = streamContainer.getBoundingClientRect();
@@ -868,46 +1005,64 @@
           drawTrackingOverlay();
         }
 
+        // object-fit: cover + zoom CSS centré : l'échelle affichée est
+        // l'échelle "cover" multipliée par le zoom, recadrée symétriquement.
         function coverMetrics() {
           const rect = streamContainer.getBoundingClientRect();
           const iw = view.naturalWidth || 640;
           const ih = view.naturalHeight || 480;
-          const scale = Math.max(rect.width / iw, rect.height / ih);
-          return { rect, iw, ih, scale,
+          const scale = Math.max(rect.width / iw, rect.height / ih) * zoomLevel;
+          return {
+            rect,
+            iw,
+            ih,
+            scale,
             cropX: (iw * scale - rect.width) / 2,
-            cropY: (ih * scale - rect.height) / 2 };
+            cropY: (ih * scale - rect.height) / 2,
+          };
         }
 
         function pointerToFrame(event) {
           const m = coverMetrics();
-          const x = (event.clientX - m.rect.left + m.cropX) / m.scale / m.iw * frameCanvas.width;
-          const y = (event.clientY - m.rect.top + m.cropY) / m.scale / m.ih * frameCanvas.height;
-          return { x: Math.max(0, Math.min(frameCanvas.width - 1, x)),
-            y: Math.max(0, Math.min(frameCanvas.height - 1, y)) };
+          const x = ((event.clientX - m.rect.left + m.cropX) / m.scale / m.iw) * frameCanvas.width;
+          const y = ((event.clientY - m.rect.top + m.cropY) / m.scale / m.ih) * frameCanvas.height;
+          return { x, y };
         }
 
         function frameToOverlay(x, y) {
           const m = coverMetrics();
-          return { x: x / frameCanvas.width * m.iw * m.scale - m.cropX,
-            y: y / frameCanvas.height * m.ih * m.scale - m.cropY };
+          return {
+            x: (x / frameCanvas.width) * m.iw * m.scale - m.cropX,
+            y: (y / frameCanvas.height) * m.ih * m.scale - m.cropY,
+          };
         }
 
+        // Un flux MJPEG ne "finit" jamais de charger : view.complete n'est pas
+        // fiable. naturalWidth > 0 suffit à savoir qu'une image est décodée.
         function grayFrame() {
-          if (!view.complete || !view.naturalWidth) throw new Error("Flux caméra indisponible");
+          if (!view.naturalWidth) {
+            const err = new Error("Aucune image décodée");
+            err.name = "NoFrame";
+            throw err;
+          }
           frameCtx.drawImage(view, 0, 0, frameCanvas.width, frameCanvas.height);
           const rgba = frameCtx.getImageData(0, 0, frameCanvas.width, frameCanvas.height).data;
           const gray = new Uint8Array(frameCanvas.width * frameCanvas.height);
-          for (let i = 0, p = 0; i < rgba.length; i += 4, p++)
-            gray[p] = (rgba[i] * 77 + rgba[i + 1] * 150 + rgba[i + 2] * 29) >> 8;
+          for (let i = 0, p = 0; i < rgba.length; i += 4, p++) gray[p] = (rgba[i] * 77 + rgba[i + 1] * 150 + rgba[i + 2] * 29) >> 8;
           return gray;
         }
 
+        function frameErrorMessage(err) {
+          if (err.name === "SecurityError") return "Flux bloqué (CORS)";
+          if (err.name === "NoFrame") return "Flux caméra indisponible";
+          return "Erreur d'image";
+        }
+
         function makePatch(gray, cx, cy) {
-          const half = Math.floor(patchSize / 2);
-          const values = new Float32Array(patchSize * patchSize);
+          const values = new Float32Array(PATCH_SIZE * PATCH_SIZE);
           let mean = 0;
-          for (let py = -half, i = 0; py <= half; py++) {
-            for (let px = -half; px <= half; px++, i++) {
+          for (let py = -HALF, i = 0; py <= HALF; py++) {
+            for (let px = -HALF; px <= HALF; px++, i++) {
               values[i] = gray[(cy + py) * frameCanvas.width + cx + px];
               mean += values[i];
             }
@@ -921,355 +1076,447 @@
           return energy < 80 ? null : { values, norm: Math.sqrt(energy) };
         }
 
-        function matchPatch(gray, cx, cy, radius) {
-          const half = Math.floor(patchSize / 2);
-          let best = { score: -1, x: cx, y: cy }, second = -1;
-          for (let y = Math.max(half, cy - radius); y <= Math.min(frameCanvas.height - half - 1, cy + radius); y += 2) {
-            for (let x = Math.max(half, cx - radius); x <= Math.min(frameCanvas.width - half - 1, cx + radius); x += 2) {
-              let mean = 0, i = 0;
-              for (let py = -half; py <= half; py++)
-                for (let px = -half; px <= half; px++) mean += gray[(y + py) * frameCanvas.width + x + px];
-              mean /= patch.values.length;
-              let dot = 0, energy = 0;
-              for (let py = -half; py <= half; py++) {
-                for (let px = -half; px <= half; px++, i++) {
-                  const delta = gray[(y + py) * frameCanvas.width + x + px] - mean;
-                  dot += patch.values[i] * delta;
-                  energy += delta * delta;
-                }
-              }
-              const score = energy > 80 ? dot / (patch.norm * Math.sqrt(energy)) : -1;
-              if (score > best.score) { second = best.score; best = { score, x, y }; }
-              else if (score > second) second = score;
+        function scoreAt(gray, x, y) {
+          const w = frameCanvas.width;
+          let mean = 0;
+          for (let py = -HALF; py <= HALF; py++) for (let px = -HALF; px <= HALF; px++) mean += gray[(y + py) * w + x + px];
+          mean /= patch.values.length;
+          let dot = 0,
+            energy = 0;
+          for (let py = -HALF, i = 0; py <= HALF; py++) {
+            for (let px = -HALF; px <= HALF; px++, i++) {
+              const delta = gray[(y + py) * w + x + px] - mean;
+              dot += patch.values[i] * delta;
+              energy += delta * delta;
             }
           }
-          best.margin = best.score - Math.max(second, 0);
+          return energy > 80 ? dot / (patch.norm * Math.sqrt(energy)) : -1;
+        }
+
+        // Recherche grossière (pas de 2) puis affinage au pixel autour du meilleur.
+        function matchPatch(gray, cx, cy, radius) {
+          const xLo = HALF,
+            xHi = frameCanvas.width - HALF - 1;
+          const yLo = HALF,
+            yHi = frameCanvas.height - HALF - 1;
+          let best = { score: -1, x: cx, y: cy };
+          for (let y = Math.max(yLo, cy - radius); y <= Math.min(yHi, cy + radius); y += 2) {
+            for (let x = Math.max(xLo, cx - radius); x <= Math.min(xHi, cx + radius); x += 2) {
+              const score = scoreAt(gray, x, y);
+              if (score > best.score) best = { score, x, y };
+            }
+          }
+          const coarse = best;
+          for (let y = Math.max(yLo, coarse.y - 1); y <= Math.min(yHi, coarse.y + 1); y++) {
+            for (let x = Math.max(xLo, coarse.x - 1); x <= Math.min(xHi, coarse.x + 1); x++) {
+              const score = scoreAt(gray, x, y);
+              if (score > best.score) best = { score, x, y };
+            }
+          }
           return best;
         }
 
         function drawTrackingOverlay() {
           const rect = streamContainer.getBoundingClientRect();
           overlayCtx.clearRect(0, 0, rect.width, rect.height);
-          if (!selectedBox) return;
-          const topLeft = frameToOverlay(selectedBox.x, selectedBox.y);
-          const bottomRight = frameToOverlay(selectedBox.x + selectedBox.w, selectedBox.y + selectedBox.h);
-          overlayCtx.strokeStyle = tracking ? "#00ff88" : "#00c8ff";
+          if (!target) {
+            targetCoord.textContent = "--- / ---";
+            return;
+          }
+          const color = tracking ? "#00ff88" : "#00c8ff";
+          const tl = frameToOverlay(target.x - HALF, target.y - HALF);
+          const br = frameToOverlay(target.x + HALF + 1, target.y + HALF + 1);
+          overlayCtx.strokeStyle = color;
           overlayCtx.lineWidth = 2;
           overlayCtx.setLineDash(tracking ? [] : [7, 5]);
-          overlayCtx.strokeRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
-          const center = frameToOverlay(selectedBox.x + selectedBox.w / 2, selectedBox.y + selectedBox.h / 2);
+          overlayCtx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
+          const c = frameToOverlay(target.x + 0.5, target.y + 0.5);
           overlayCtx.beginPath();
-          overlayCtx.arc(center.x, center.y, 5, 0, Math.PI * 2);
-          overlayCtx.fillStyle = tracking ? "#00ff88" : "#00c8ff";
+          overlayCtx.arc(c.x, c.y, 4, 0, Math.PI * 2);
+          overlayCtx.fillStyle = color;
           overlayCtx.fill();
+          targetCoord.textContent = String(Math.round(target.x)).padStart(3, "0") + " / " + String(Math.round(target.y)).padStart(3, "0");
         }
 
-        function sendTrackAxis(axis, value) {
-          if (axis === "pan" && value === lastPan) return;
-          if (axis === "tilt" && value === lastTilt) return;
-          if (axis === "pan") lastPan = value; else lastTilt = value;
-          fetchUrl(`/control?var=${axis}&val=${value}`);
-        }
+        const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-        function stopTracking(reason = "Suivi arrêté") {
+        // Les commandes passent par la même WebSocket : un 0 envoyé ici arrive
+        // toujours AVANT une commande manuelle envoyée juste après.
+        // force : envoie l'arrêt même si le suivi n'était pas actif (bouton ARRÊT).
+        function stopTracking(reason, { force = false } = {}) {
+          const wasTracking = tracking;
           tracking = false;
-          selecting = false;
-          selectionStart = null;
-          sendTrackAxis("pan", 0);
-          sendTrackAxis("tilt", 0);
+          generation++;
+          setSelecting(false);
+          if (wasTracking || force) {
+            turret.send("pan", 0);
+            turret.send("tilt", 0);
+          }
+          moving = false;
+          lastPulse = null;
           if (reason) trackStatus.textContent = reason;
           drawTrackingOverlay();
         }
 
+        // Toute commande manuelle de tourelle reprend la main sur le suivi.
+        function takeOver(axis) {
+          if (tracking) stopTracking("Commande manuelle");
+        }
+
+        function setSelecting(on) {
+          selecting = on;
+          streamContainer.classList.toggle("selecting", on);
+        }
+
         function selectAt(point) {
           patch = null;
-          selectedBox = null;
+          target = null;
           try {
             const gray = grayFrame();
-            const cx = Math.max(8, Math.min(frameCanvas.width - 9, Math.round(point.x)));
-            const cy = Math.max(8, Math.min(frameCanvas.height - 9, Math.round(point.y)));
+            const cx = Math.max(HALF, Math.min(frameCanvas.width - HALF - 1, Math.round(point.x)));
+            const cy = Math.max(HALF, Math.min(frameCanvas.height - HALF - 1, Math.round(point.y)));
             patch = makePatch(gray, cx, cy);
-            if (!patch) { trackStatus.textContent = "Choisis une zone texturée"; return; }
-            selectedBox = { x: cx - 9, y: cy - 9, w: 18, h: 18 };
-            trackStatus.textContent = "Zone sélectionnée";
-            drawTrackingOverlay();
+            if (!patch) {
+              trackStatus.textContent = "Zone trop uniforme, choisis une zone texturée";
+              drawTrackingOverlay();
+              return;
+            }
+            target = { x: cx, y: cy };
+            trackStatus.textContent = "Zone sélectionnée · SUIVRE pour démarrer";
           } catch (error) {
-            trackStatus.textContent = "Flux inaccessible (CORS ?)";
+            trackStatus.textContent = frameErrorMessage(error);
             console.error(error);
           }
+          drawTrackingOverlay();
+        }
+
+        const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+        // Erreur par axe, normalisée [-1, 1] : positive → commande +1 attendue
+        // (cible à droite pour pan, au-dessus pour tilt), au signe appris près.
+        function trackError() {
+          const w2 = frameCanvas.width / 2;
+          const h2 = frameCanvas.height / 2;
+          return { pan: (target.x - w2) / w2, tilt: -(target.y - h2) / h2 };
+        }
+
+        // Compare l'erreur avant / après la dernière impulsion :
+        // - la cible s'est éloignée deux fois de suite → sens de l'axe inversé ;
+        // - sinon on recale la vitesse (erreur corrigée par ms).
+        function learnFromLastPulse(err) {
+          if (!lastPulse) return;
+          for (const [axis, p] of Object.entries(lastPulse)) {
+            const a = axes[axis];
+            const progress = (p.err - err[axis]) * Math.sign(p.err); // > 0 : rapproché du centre
+            if (progress < -0.03) {
+              if (++a.wrongWay >= 2) {
+                a.sign = -a.sign;
+                a.wrongWay = 0;
+                try {
+                  localStorage.setItem(AXIS_SIGN_KEY, JSON.stringify({ pan: axes.pan.sign, tilt: axes.tilt.sign }));
+                } catch (e) {}
+                console.log(`Suivi : sens ${axis} inversé automatiquement`);
+              }
+            } else if (progress > 0.02) {
+              a.wrongWay = 0;
+              a.rate = clamp(0.6 * a.rate + 0.4 * (progress / p.ms), 1 / 5000, 1 / 40);
+            } else {
+              a.rate = clamp(a.rate * 0.7, 1 / 5000, 1 / 40); // rien vu bouger : impulsion trop courte
+            }
+          }
+          lastPulse = null;
+        }
+
+        // Pour chaque axe : départ → attente → arrêt, dans l'ordre sur la WebSocket.
+        // Puis on attend SETTLE_MS pour que la caméra montre la position finale.
+        // Si la liaison tombe en plein mouvement, l'ESP32 arrête seul la tourelle.
+        async function runPulse(pulses) {
+          const gen = generation;
+          const entries = Object.entries(pulses);
+          moving = true;
+          for (const [axis, p] of entries) turret.send(axis, p.dir);
+          await Promise.all(
+            entries.map(async ([axis, p]) => {
+              await delay(p.ms);
+              if (gen === generation) turret.send(axis, 0); // sinon stopTracking a déjà arrêté
+            }),
+          );
+          if (gen !== generation) return;
+          settleUntil = performance.now() + SETTLE_MS;
+          moving = false;
+        }
+
+        function correctAim() {
+          const err = trackError();
+          learnFromLastPulse(err);
+          const pulses = {};
+          for (const axis of ["pan", "tilt"]) {
+            const e = err[axis];
+            if (Math.abs(e) <= TRACK_DEAD_BAND) continue;
+            pulses[axis] = {
+              dir: (e > 0 ? 1 : -1) * axes[axis].sign,
+              ms: Math.round(clamp((Math.abs(e) * PULSE_FRACTION) / axes[axis].rate, PULSE_MIN_MS, PULSE_MAX_MS)),
+              err: e,
+            };
+          }
+          if (Object.keys(pulses).length === 0) return false;
+          if (!turret.isOpen()) {
+            stopTracking("Liaison tourelle coupée — arrêt");
+            return false;
+          }
+          lastPulse = pulses;
+          runPulse(pulses);
+          return true;
+        }
+
+        function trackFrame(timestamp) {
+          if (!tracking) return;
+          if (timestamp - lastTrackFrame < TRACK_INTERVAL_MS) {
+            requestAnimationFrame(trackFrame);
+            return;
+          }
+          lastTrackFrame = timestamp;
+          const settled = !moving && performance.now() >= settleUntil;
+          try {
+            const gray = grayFrame();
+            const radius = stale ? TRACK_SEARCH_RADIUS_WIDE : TRACK_SEARCH_RADIUS;
+            const match = matchPatch(gray, Math.round(target.x), Math.round(target.y), radius);
+            if (match.score < TRACK_CONFIDENCE_MIN) {
+              stale = true;
+              // Pendant un mouvement le flou de bougé est normal : on ne compte
+              // les échecs que tourelle arrêtée et image stabilisée.
+              if (settled && ++weakFrames >= TRACK_LOSS_FRAMES) {
+                stopTracking("Cible perdue — moteurs arrêtés");
+                return;
+              }
+              trackStatus.textContent = settled ? "Confiance faible…" : "Déplacement…";
+            } else {
+              weakFrames = 0;
+              stale = false;
+              target.x = match.x;
+              target.y = match.y;
+              const score = `${(match.score * 100).toFixed(0)}%`;
+              if (!settled) trackStatus.textContent = `Déplacement · ${score}`;
+              else if (correctAim()) trackStatus.textContent = `Correction · ${score}`;
+              else trackStatus.textContent = `Verrouillé · ${score}`;
+            }
+            drawTrackingOverlay();
+          } catch (error) {
+            console.error(error);
+            stopTracking(frameErrorMessage(error) + " — moteurs arrêtés");
+            return;
+          }
+          requestAnimationFrame(trackFrame);
         }
 
         streamContainer.addEventListener("pointerdown", (event) => {
           if (!selecting || tracking) return;
           event.preventDefault();
-          selectionStart = pointerToFrame(event);
-          streamContainer.setPointerCapture(event.pointerId);
+          setSelecting(false);
+          selectAt(pointerToFrame(event));
         });
-        streamContainer.addEventListener("pointerup", (event) => {
-          if (!selecting || !selectionStart || tracking) return;
-          const end = pointerToFrame(event);
-          const dx = Math.abs(end.x - selectionStart.x);
-          const dy = Math.abs(end.y - selectionStart.y);
-          const center = { x: (end.x + selectionStart.x) / 2, y: (end.y + selectionStart.y) / 2 };
-          selectAt(center);
-          if (selectedBox) {
-            selectedBox = { x: Math.max(0, Math.min(frameCanvas.width - 18, center.x - Math.max(9, dx / 2))),
-              y: Math.max(0, Math.min(frameCanvas.height - 18, center.y - Math.max(9, dy / 2))),
-              w: Math.max(18, dx), h: Math.max(18, dy) };
-            trackStatus.textContent = "Zone sélectionnée · SUIVRE pour démarrer";
-            drawTrackingOverlay();
-          }
-          selectionStart = null;
-          selecting = false;
-        });
-        selectTrackButton.addEventListener("click", () => {
+
+        document.getElementById("track-select").addEventListener("click", () => {
           stopTracking("Clique sur l'objet dans l'image");
-          selecting = true;
+          setSelecting(true);
         });
-        startTrackButton.addEventListener("click", () => {
-          if (!patch || !selectedBox) { trackStatus.textContent = "Sélectionne d'abord l'objet"; return; }
+
+        document.getElementById("track-start").addEventListener("click", () => {
+          if (!patch || !target) {
+            trackStatus.textContent = "Sélectionne d'abord l'objet";
+            return;
+          }
+          if (tracking) return;
           tracking = true;
           weakFrames = 0;
           lastTrackFrame = 0;
+          stale = false;
+          moving = false;
+          settleUntil = 0;
+          lastPulse = null;
+          axes.pan.wrongWay = axes.tilt.wrongWay = 0;
           trackStatus.textContent = "Suivi actif";
+          drawTrackingOverlay();
           requestAnimationFrame(trackFrame);
         });
-        stopTrackButton.addEventListener("click", () => stopTracking("Suivi arrêté"));
+
+        document.getElementById("track-stop").addEventListener("click", () => stopTracking("Suivi arrêté", { force: true }));
+
         window.addEventListener("resize", fitOverlay);
-        view.addEventListener("load", fitOverlay);
-        window.addEventListener("blur", () => { if (tracking) stopTracking("Fenêtre inactive — arrêt"); });
+        view.addEventListener("load", fitOverlay, { once: true });
+        window.addEventListener("blur", () => {
+          if (tracking) stopTracking("Fenêtre inactive — arrêt");
+        });
         document.addEventListener("visibilitychange", () => {
           if (document.hidden && tracking) stopTracking("Page masquée — arrêt");
         });
+        // Fermeture de la page : la WebSocket se ferme et l'ESP32 arrête la
+        // tourelle de lui-même ; on envoie quand même l'arrêt par principe.
         window.addEventListener("pagehide", () => {
-          fetch("/control?var=pan&val=0", { keepalive: true }).catch(() => {});
-          fetch("/control?var=tilt&val=0", { keepalive: true }).catch(() => {});
+          turret.send("pan", 0);
+          turret.send("tilt", 0);
+        });
+        turret.onClose(() => {
+          if (tracking) stopTracking("Liaison tourelle coupée — arrêt");
         });
 
-        function trackFrame(timestamp) {
-          if (!tracking || timestamp - lastTrackFrame < 100) {
-            if (tracking) requestAnimationFrame(trackFrame);
-            return;
-          }
-          lastTrackFrame = timestamp;
-          try {
-            const gray = grayFrame();
-            const cx = Math.round(selectedBox.x + selectedBox.w / 2);
-            const cy = Math.round(selectedBox.y + selectedBox.h / 2);
-            const match = matchPatch(gray, cx, cy, 15);
-            if (match.score < TRACK_CONFIDENCE_MIN) {
-              weakFrames++;
-              sendTrackAxis("pan", 0);
-              sendTrackAxis("tilt", 0);
-              if (weakFrames >= TRACK_LOSS_FRAMES) { stopTracking("Cible perdue — moteurs arrêtés"); return; }
-            } else {
-              weakFrames = 0;
-              selectedBox.x = match.x - selectedBox.w / 2;
-              selectedBox.y = match.y - selectedBox.h / 2;
-              const ex = (match.x - frameCanvas.width / 2) / (frameCanvas.width / 2);
-              const ey = (match.y - frameCanvas.height / 2) / (frameCanvas.height / 2);
-              const pan = Math.abs(ex) <= TRACK_DEAD_BAND ? 0 : (ex > 0 ? 1 : -1);
-              const tilt = Math.abs(ey) <= TRACK_DEAD_BAND ? 0 : (ey < 0 ? 1 : -1);
-              sendTrackAxis("pan", pan);
-              sendTrackAxis("tilt", tilt);
-              trackStatus.textContent = `Suivi actif · ${(match.score * 100).toFixed(0)}%`;
-            }
-            drawTrackingOverlay();
-          } catch (error) {
-            stopTracking("Erreur d'image — moteurs arrêtés");
-            console.error(error);
-            return;
-          }
-          if (tracking) requestAnimationFrame(trackFrame);
-        }
         fitOverlay();
 
-        function bindControl(button, startCommand, stopCommand, onStart) {
+        /* ============================================================
+        BOUTONS À L'ÉCRAN
+        ============================================================ */
+        // start / stop : fonctions qui envoient la commande correspondante.
+        function bindControl(button, start, stop, onStart) {
+          let active = false;
           button.addEventListener("pointerdown", (e) => {
             e.preventDefault();
+            active = true;
             if (onStart) onStart();
-            fetchUrl(startCommand);
+            start();
           });
           const stopHandler = (e) => {
             e.preventDefault();
-            fetchUrl(stopCommand);
+            if (!active) return; // pas de "stop" parasite au simple survol
+            active = false;
+            stop();
           };
           button.addEventListener("pointerup", stopHandler);
           button.addEventListener("pointerleave", stopHandler);
           button.addEventListener("pointercancel", stopHandler);
         }
 
-        /* ============================================================
-        CONTROLES TOURELLE
-        - pan
-        - tilt
-        ============================================================ */
+        // Tourelle
         const panLeft = document.getElementById("pan-left");
-        bindControl(panLeft, "/control?var=pan&val=-1", "/control?var=pan&val=0", () => stopTracking("Commande manuelle"));
-
         const panRight = document.getElementById("pan-right");
-        bindControl(panRight, "/control?var=pan&val=1", "/control?var=pan&val=0", () => stopTracking("Commande manuelle"));
-
         const tiltUp = document.getElementById("tilt-up");
-        bindControl(tiltUp, "/control?var=tilt&val=1", "/control?var=tilt&val=0", () => stopTracking("Commande manuelle"));
-
         const tiltDown = document.getElementById("tilt-down");
-        bindControl(tiltDown, "/control?var=tilt&val=-1", "/control?var=tilt&val=0", () => stopTracking("Commande manuelle"));
+        const turretCmd = (axis, value) => () => turret.send(axis, value);
+        bindControl(panLeft, turretCmd("pan", -1), turretCmd("pan", 0), () => takeOver("pan"));
+        bindControl(panRight, turretCmd("pan", 1), turretCmd("pan", 0), () => takeOver("pan"));
+        bindControl(tiltUp, turretCmd("tilt", 1), turretCmd("tilt", 0), () => takeOver("tilt"));
+        bindControl(tiltDown, turretCmd("tilt", -1), turretCmd("tilt", 0), () => takeOver("tilt"));
 
-        /* ============================================================
-        CONTROLES CHASSIS
-
-        ============================================================ */
+        // Châssis
         const chassisUp = document.getElementById("chassis-up");
-        bindControl(chassisUp, "http://areschassis.local/control?cmd=forward", "http://areschassis.local/control?cmd=stop");
-
         const chassisLeft = document.getElementById("chassis-left");
-        bindControl(chassisLeft, "http://areschassis.local/control?cmd=rotate_left", "http://areschassis.local/control?cmd=stop");
-
         const chassisRight = document.getElementById("chassis-right");
-        bindControl(chassisRight, "http://areschassis.local/control?cmd=rotate_right", "http://areschassis.local/control?cmd=stop");
-
         const chassisDown = document.getElementById("chassis-down");
-        bindControl(chassisDown, "http://areschassis.local/control?cmd=backward", "http://areschassis.local/control?cmd=stop");
+        const strafeLeftBtn = document.getElementById("strafe-left");
+        const strafeRightBtn = document.getElementById("strafe-right");
+        const chassisCmd = (cmd) => () => fetchUrl(CHASSIS + cmd);
+        bindControl(chassisUp, chassisCmd("forward"), chassisCmd("stop"));
+        bindControl(chassisLeft, chassisCmd("rotate_left"), chassisCmd("stop"));
+        bindControl(chassisRight, chassisCmd("rotate_right"), chassisCmd("stop"));
+        bindControl(chassisDown, chassisCmd("backward"), chassisCmd("stop"));
+        bindControl(strafeLeftBtn, chassisCmd("strafe_left"), chassisCmd("stop"));
+        bindControl(strafeRightBtn, chassisCmd("strafe_right"), chassisCmd("stop"));
 
-        const chassisStrafeRight = document.getElementById("strafe-right");
-        bindControl(chassisStrafeRight, "http://areschassis.local/control?cmd=strafe_right", "http://areschassis.local/control?cmd=stop");
-
-        const chassisStrafeLeft = document.getElementById("strafe-left");
-        bindControl(chassisStrafeLeft, "http://areschassis.local/control?cmd=strafe_left", "http://areschassis.local/control?cmd=stop");
         /* ============================================================
-        ARMEMENT / SYSTEMES
-        - fire
-        - zoom
-        - laser
+        ARMEMENT / SYSTÈMES
         ============================================================ */
         const fire = document.getElementById("fire");
         fire.onclick = () => {
-          fetchUrl("/control?var=Fire&val=1");
+          turret.send("Fire", 1);
           fireCount++;
           document.getElementById("fire-count").textContent = fireCount;
           document.body.style.boxShadow = "inset 0 0 100px rgba(255,48,52,0.3)";
           setTimeout(() => (document.body.style.boxShadow = ""), 200);
         };
 
-        const zoomBtn = document.getElementById("zoomBtn");
-        let zoomLevel = 1;
-        zoomBtn.onclick = () => {
-          if (zoomLevel === 1) {
-            document.body.classList.add("zoom-x2");
-            zoomLevel = 2;
-            zoomBtn.textContent = "X2";
-            document.getElementById("zoom-val").textContent = "x2.0";
-          } else {
-            document.body.classList.remove("zoom-x2");
-            zoomLevel = 1;
-            zoomBtn.textContent = "X1";
-            document.getElementById("zoom-val").textContent = "x1.0";
-          }
-        };
+        zoomBtn.onclick = () => setZoom(zoomLevel === 1 ? 2 : 1);
+
         const laserBtn = document.getElementById("laserBtn");
-        let laserLevel = 1;
         laserBtn.onclick = () => {
-          if (laserLevel === 1) {
-            laserLevel = 2;
-            laserBtn.textContent = "LASER ON";
-            fetchUrl("/control?var=laser&val=1");
-          } else {
-            laserLevel = 1;
-            laserBtn.textContent = "LASER OFF";
-            fetchUrl("/control?var=laser&val=0");
-          }
+          laserOn = !laserOn;
+          laserBtn.textContent = laserOn ? "LASER ON" : "LASER OFF";
+          turret.send("laser", laserOn ? 1 : 0);
         };
 
         /* ============================================================
-        CONTROLES CLAVIER
+        CLAVIER
         ============================================================ */
+        const KEY_MAP = {
+          ArrowLeft: ["pan", -1],
+          ArrowRight: ["pan", 1],
+          ArrowUp: ["tilt", 1],
+          ArrowDown: ["tilt", -1],
+        };
+
         document.addEventListener("keydown", (e) => {
-          if (e.repeat) return;
-          switch (e.key) {
-            case "ArrowLeft":
-              fetchUrl("/control?var=pan&val=-1");
-              break;
-            case "ArrowRight":
-              fetchUrl("/control?var=pan&val=1");
-              break;
-            case "ArrowUp":
-              fetchUrl("/control?var=tilt&val=1");
-              break;
-            case "ArrowDown":
-              fetchUrl("/control?var=tilt&val=-1");
-              break;
-            case " ":
-            case "Spacebar":
-              fire.click();
-              break;
+          if (e.key === " " || e.key === "Spacebar") {
+            e.preventDefault();
+            if (!e.repeat) fire.click();
+            return;
           }
+          const cmd = KEY_MAP[e.key];
+          if (!cmd) return;
+          e.preventDefault();
+          if (e.repeat) return;
+          takeOver(cmd[0]);
+          turret.send(cmd[0], cmd[1]);
         });
 
         document.addEventListener("keyup", (e) => {
-          switch (e.key) {
-            case "ArrowLeft":
-            case "ArrowRight":
-              fetchUrl("/control?var=pan&val=0");
-              break;
-            case "ArrowUp":
-            case "ArrowDown":
-              fetchUrl("/control?var=tilt&val=0");
-              break;
-          }
+          const cmd = KEY_MAP[e.key];
+          if (!cmd) return;
+          turret.send(cmd[0], 0);
         });
 
         /* ============================================================
-        GAMEPAD SUPPORT (Xbox / Standard mapping)
+        MANETTE (Xbox / mapping "standard")
         ------------------------------------------------------------
-        Mapping retenu :
-          - D-pad UP    (button 12) -> tilt +1
-          - D-pad DOWN  (button 13) -> tilt -1
-          - D-pad LEFT  (button 14) -> pan  -1
-          - D-pad RIGHT (button 15) -> pan  +1
-          - Stick gauche axes 0/1   -> chassis control (avec deadzone)
-          - Stick droit axes 2/3    -> turret control (avec deadzone)
-          - A           (button 0)  -> FIRE  (front montant uniquement)
-          - RT          (button 7)  -> FIRE  (front montant uniquement)
-          - LT          (button 6)  -> ZOOM maintenu (pressé = x2, relâché = x1)
-          - LB          (button 4)  -> Strafe-left
-          - RB          (button 5)  -> Strafe-right
+          - Stick gauche (axes 0/1) -> châssis, axe dominant uniquement
+          - LB (4) / RB (5)         -> strafe gauche / droite (prioritaire)
+          - D-pad (12-15)           -> tourelle (prioritaire sur le stick)
+          - Stick droit (axes 2/3)  -> tourelle
+          - A (0) ou RT (7)         -> FIRE (front montant)
+          - LT (6)                  -> zoom maintenu
+        Le châssis reçoit UNE commande calculée à partir de tous les
+        contrôles : relâcher un axe n'envoie plus de "stop" si l'autre
+        est encore tenu.
         ============================================================ */
+        const DEADZONE = 0.25;
 
-        const DEADZONE = 0.25; // seuil en deçà duquel le stick est ignoré
-        const STICK_THRESHOLD = 0.5; // seuil au-delà duquel on considère "poussé à fond"
-
-        // Etat précédent pour détecter les transitions
         const prevState = {
-          chassisX: 0, // -1, 0, 1
-          chassisY: 0,
+          chassisCmd: "stop",
           turretPan: 0,
           turretTilt: 0,
           fire: false,
           zoom: false,
-          strafeLeft: false,
-          strafeRight: false,
         };
 
         const gpStatusEl = document.getElementById("gp-status-val");
 
-        // Affichage visuel : surligne les boutons à l'écran quand la manette les active
         function setBtnActive(el, active) {
-          if (!el) return;
-          if (active) el.classList.add("gp-active");
-          else el.classList.remove("gp-active");
+          if (el) el.classList.toggle("gp-active", active);
         }
 
-        // Lit la manette connectée (la première qu'on trouve)
         function getGamepad() {
           const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-          for (const pad of pads) {
-            if (pad && pad.connected) return pad;
-          }
+          for (const pad of pads) if (pad && pad.connected) return pad;
           return null;
         }
 
-        // Boucle de polling
+        function pressed(pad, i) {
+          return !!(pad.buttons[i] && pad.buttons[i].pressed);
+        }
+
+        function stickDir(v) {
+          return Math.abs(v) > DEADZONE ? (v > 0 ? 1 : -1) : 0;
+        }
+
+        function chassisCommand(pad) {
+          const lb = pressed(pad, 4);
+          const rb = pressed(pad, 5);
+          if (lb && !rb) return "strafe_left";
+          if (rb && !lb) return "strafe_right";
+          const x = pad.axes[0] || 0;
+          const y = pad.axes[1] || 0;
+          if (Math.max(Math.abs(x), Math.abs(y)) <= DEADZONE) return "stop";
+          if (Math.abs(x) > Math.abs(y)) return x > 0 ? "rotate_right" : "rotate_left";
+          return y < 0 ? "forward" : "backward";
+        }
+
         function pollGamepad() {
           const pad = getGamepad();
 
@@ -1285,168 +1532,76 @@
           gpStatusEl.classList.remove("off");
           gpStatusEl.classList.add("ok");
 
-          /* ----------------------------
-          CHASSIS
-          Stick gauche
-          ---------------------------- */
-          // ---- CHASSIS control : left stick axes 0 (X), 1 (Y)
-          let chassisX = 0;
-          let chassisY = 0;
-          const leftX = pad.axes[0] || 0;
-          const leftY = pad.axes[1] || 0;
-          chassisX = Math.abs(leftX) > DEADZONE ? (leftX > 0 ? 1 : -1) : 0;
-          chassisY = Math.abs(leftY) > DEADZONE ? (leftY < 0 ? 1 : -1) : 0;
-          if (chassisX !== prevState.chassisX) {
-            if (chassisX === 1) {
-              fetchUrl("http://areschassis.local/control?cmd=rotate_right");
-            } else if (chassisX === -1) {
-              fetchUrl("http://areschassis.local/control?cmd=rotate_left");
-            } else {
-              fetchUrl("http://areschassis.local/control?cmd=stop");
-            }
-            prevState.chassisX = chassisX;
-            // feedback visuel for chassis left/right buttons
-            setBtnActive(chassisLeft, chassisX === -1);
-            setBtnActive(chassisRight, chassisX === 1);
+          // ---- CHÂSSIS
+          const cmd = chassisCommand(pad);
+          if (cmd !== prevState.chassisCmd) {
+            fetchUrl(CHASSIS + cmd);
+            prevState.chassisCmd = cmd;
+            setBtnActive(chassisUp, cmd === "forward");
+            setBtnActive(chassisDown, cmd === "backward");
+            setBtnActive(chassisLeft, cmd === "rotate_left");
+            setBtnActive(chassisRight, cmd === "rotate_right");
+            setBtnActive(strafeLeftBtn, cmd === "strafe_left");
+            setBtnActive(strafeRightBtn, cmd === "strafe_right");
           }
-          if (chassisY !== prevState.chassisY) {
-            if (chassisY === 1) {
-              fetchUrl("http://areschassis.local/control?cmd=forward");
-            } else if (chassisY === -1) {
-              fetchUrl("http://areschassis.local/control?cmd=backward");
-            } else {
-              fetchUrl("http://areschassis.local/control?cmd=stop");
-            }
-            prevState.chassisY = chassisY;
-            // feedback visuel for chassis up/down buttons
-            setBtnActive(chassisUp, chassisY === 1);
-            setBtnActive(chassisDown, chassisY === -1);
-          }
-          //Strafe-left
 
-          const lbPressed = pad.buttons[4] && pad.buttons[4].pressed;
-          if (lbPressed && !prevState.strafeLeft) {
-            // Front montant -> strafe gauche
-
-            fetchUrl("http://areschassis.local/control?cmd=strafe_left");
-          } else if (!lbPressed && prevState.strafeLeft) {
-            // Front descendant -> stop
-            fetchUrl("http://areschassis.local/control?cmd=stop");
-          }
-          prevState.strafeLeft = lbPressed;
-
-          //Strafe-Right
-
-          const rbPressed = pad.buttons[5] && pad.buttons[5].pressed;
-          if (rbPressed && !prevState.strafeRight) {
-            // Front montant -> strafe droit
-
-            fetchUrl("http://areschassis.local/control?cmd=strafe_right");
-          } else if (!rbPressed && prevState.strafeRight) {
-            // Front descendant -> stop
-            fetchUrl("http://areschassis.local/control?cmd=stop");
-          }
-          prevState.strafeRight = rbPressed;
-
-          /* ----------------------------
-          TOURELLE
-          Stick droit
-          ---------------------------- */
-          // ---- TURRET control : right stick axes 2 (X), 3 (Y)
-          let turretPan = 0;
-          let turretTilt = 0;
-          const rightX = pad.axes[2] || 0;
-          const rightY = pad.axes[3] || 0;
-          turretPan = Math.abs(rightX) > DEADZONE ? (rightX > 0 ? 1 : -1) : 0;
-          turretTilt = Math.abs(rightY) > DEADZONE ? (rightY > 0 ? -1 : 1) : 0; // Y axis inverted for tilt
+          // ---- TOURELLE : D-pad prioritaire, sinon stick droit
+          let turretPan = pressed(pad, 14) ? -1 : pressed(pad, 15) ? 1 : stickDir(pad.axes[2] || 0);
+          let turretTilt = pressed(pad, 12) ? 1 : pressed(pad, 13) ? -1 : -stickDir(pad.axes[3] || 0);
+          turretTilt = turretTilt || 0; // évite -0
 
           if (turretPan !== prevState.turretPan) {
-            if (tracking) stopTracking("Commande manuelle");
-            fetchUrl("/control?var=pan&val=" + turretPan);
+            takeOver("pan");
+            turret.send("pan", turretPan);
             prevState.turretPan = turretPan;
             setBtnActive(panLeft, turretPan === -1);
             setBtnActive(panRight, turretPan === 1);
           }
 
           if (turretTilt !== prevState.turretTilt) {
-            if (tracking) stopTracking("Commande manuelle");
-            fetchUrl("/control?var=tilt&val=" + turretTilt);
+            takeOver("tilt");
+            turret.send("tilt", turretTilt);
             prevState.turretTilt = turretTilt;
             setBtnActive(tiltUp, turretTilt === 1);
             setBtnActive(tiltDown, turretTilt === -1);
           }
 
-          /* ----------------------------
-          ARMEMENT
-          FIRE + ZOOM
-          ---------------------------- */
-          // ---- FIRE : front montant uniquement (A=0 ou RT=7)
-          const fireBtn = (pad.buttons[0] && pad.buttons[0].pressed) || (pad.buttons[7] && pad.buttons[7].pressed);
-          if (fireBtn && !prevState.fire) {
-            fire.click();
-          }
+          // ---- FIRE (front montant)
+          const fireBtn = pressed(pad, 0) || pressed(pad, 7);
+          if (fireBtn && !prevState.fire) fire.click();
           prevState.fire = fireBtn;
           setBtnActive(fire, fireBtn);
 
-          // ---- ZOOM : maintenu = x2, relâché = x1 (LT = bouton 6)
-          // On force l'état du zoom selon la pression, sans utiliser zoomBtn.click()
-          // qui ferait un toggle (et inverserait donc le comportement).
-          const ltPressed = pad.buttons[6] && pad.buttons[6].pressed;
-          if (ltPressed && !prevState.zoom) {
-            // Front montant -> on zoome
-            document.body.classList.add("zoom-x2");
-            zoomLevel = 2;
-            zoomBtn.textContent = "X2";
-            document.getElementById("zoom-val").textContent = "x2.0";
-          } else if (!ltPressed && prevState.zoom) {
-            // Front descendant -> on dézoome
-            document.body.classList.remove("zoom-x2");
-            zoomLevel = 1;
-            zoomBtn.textContent = "X1";
-            document.getElementById("zoom-val").textContent = "x1.0";
-          }
+          // ---- ZOOM maintenu
+          const ltPressed = pressed(pad, 6);
+          if (ltPressed !== prevState.zoom) setZoom(ltPressed ? 2 : 1);
           prevState.zoom = ltPressed;
 
           requestAnimationFrame(pollGamepad);
         }
 
-        // Démarre la boucle dès qu'une manette est branchée
         window.addEventListener("gamepadconnected", (e) => {
           console.log("Manette connectée :", e.gamepad.id, "mapping:", e.gamepad.mapping);
         });
 
         window.addEventListener("gamepaddisconnected", (e) => {
           console.log("Manette déconnectée :", e.gamepad.id);
-          // Sécurité : si on était en train de bouger, on stoppe la tourelle et chassis
-          if (prevState.turretPan !== 0) {
-            fetchUrl("/control?var=pan&val=0");
-            prevState.turretPan = 0;
-          }
-          if (prevState.turretTilt !== 0) {
-            fetchUrl("/control?var=tilt&val=0");
-            prevState.turretTilt = 0;
-          }
-          if (prevState.chassisX !== 0) {
-            fetchUrl("http://areschassis.local/control?cmd=stop");
-            prevState.chassisX = 0;
-          }
-          if (prevState.chassisY !== 0) {
-            fetchUrl("http://areschassis.local/control?cmd=stop");
-            prevState.chassisY = 0;
-          }
-          if (prevState.strafeLeft) {
-            fetchUrl("http://areschassis.local/control?cmd=stop");
-            prevState.strafeLeft = false;
-          }
-          if (prevState.strafeRight) {
-            fetchUrl("http://areschassis.local/control?cmd=stop");
-            prevState.strafeRight = false;
-          }
+          if (prevState.turretPan !== 0) turret.send("pan", 0);
+          if (prevState.turretTilt !== 0) turret.send("tilt", 0);
+          if (prevState.chassisCmd !== "stop") fetchUrl(CHASSIS + "stop");
+          if (prevState.zoom) setZoom(1);
+          prevState.turretPan = 0;
+          prevState.turretTilt = 0;
+          prevState.chassisCmd = "stop";
+          prevState.fire = false;
+          prevState.zoom = false;
+          [chassisUp, chassisDown, chassisLeft, chassisRight, strafeLeftBtn, strafeRightBtn, panLeft, panRight, tiltUp, tiltDown, fire].forEach((el) =>
+            setBtnActive(el, false),
+          );
         });
 
-        // On lance la boucle dans tous les cas : Safari notamment ne déclenche
-        // gamepadconnected qu'après une première interaction utilisateur,
-        // donc le polling permanent est plus fiable.
+        // Polling permanent : Safari ne déclenche gamepadconnected
+        // qu'après une première interaction.
         requestAnimationFrame(pollGamepad);
       });
     </script>
