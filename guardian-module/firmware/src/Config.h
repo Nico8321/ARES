@@ -19,7 +19,7 @@ namespace config
     constexpr const char *WIFI_PASSWORD = "12345678";
     constexpr unsigned long MOTOR_ELEV_STEP_INTERVAL = 11000;
     constexpr unsigned long MOTOR_FIRE_STEP_INTERVAL = 2000;
-    constexpr int FIRE_CYCLE = 1100;
+    constexpr int FIRE_CYCLE = 1200;
     constexpr unsigned long MOTOR_DEFAULT_STEP_INTERVAL = 6000;
     constexpr int HTTP_PORT = 80;
 }
